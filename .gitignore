@@ -1,0 +1,11 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# gzip copies are belt-and-suspenders for hosts that don't auto-compress.
+# GitHub Pages auto-gzips text/json, so we don't ship the .gz duplicates.
+data/*.json.gz
+
+# Local dev artefacts
+*.log
+/tmp/
