@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="写词人">
 <meta name="theme-color" content="#1a1a1a">
 <title>写词人</title>
@@ -42,15 +42,15 @@
 </nav>
 
 <main class="layout">
+  <button class="back" id="back" type="button" aria-label="返回">
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M10 3.5L5.5 8 10 12.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
   <section class="results" id="results" aria-label="搜索结果">
     <div class="empty">输入关键词开始搜索<br>或点击上方词人快筛</div>
   </section>
   <aside class="detail" id="detail" aria-label="歌曲详情">
-    <button class="back" id="back" type="button" aria-label="返回">
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        <path d="M10 3.5L5.5 8 10 12.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
     <div class="detail-inner">
       <div class="empty">从左侧选一首歌</div>
     </div>

@@ -45,6 +45,23 @@ function saveRatings() {
 function ratingOf(id) { return state.ratings[id] || 0; }
 function applyRatings(rows) { for (const s of rows) s.rating = ratingOf(s.id); }
 
+// 梁伟文 is 林夕's real name — display the pen name everywhere.
+const ALIAS = { "梁伟文": "林夕" };
+function rename(name) { return ALIAS[name] || name; }
+function dedupePreserve(arr) {
+  const seen = new Set(), out = [];
+  for (const x of arr) { if (!seen.has(x)) { seen.add(x); out.push(x); } }
+  return out;
+}
+function normalizeAliases(rows) {
+  for (const s of rows) {
+    if (s.lyricists) s.lyricists = dedupePreserve(s.lyricists.map(rename));
+    if (s.composers) s.composers = dedupePreserve(s.composers.map(rename));
+    if (s.features)  s.features  = dedupePreserve(s.features.map(rename));
+    if (s.lyrics)    s.lyrics    = s.lyrics.replace(/梁伟文/g, "林夕");
+  }
+}
+
 // Group key: same title + same lyricist set → likely a re-release.
 // Sort uses the earliest year across the group as the "real" composition year.
 function groupKey(s) {
@@ -87,16 +104,18 @@ async function bootstrap() {
     ]);
     state.lyricists = lyricists;
     state.stats = stats;
+    normalizeAliases(curated);
     applyRatings(curated);
     state.corpus = curated;
     state.curatedCount = curated.length;
     computeSortYears();
     renderChips();
-    renderFoot();
+    showCountInFoot();
     triggerSearch();
 
     loadJson("data/corpus_extra.json")
       .then((extra) => {
+        normalizeAliases(extra);
         applyRatings(extra);
         state.corpus = state.corpus.concat(extra);
         state.extraLoaded = true;
@@ -109,10 +128,43 @@ async function bootstrap() {
   }
 }
 
-function renderFoot() {
+// ── footer messages: count + lyric quotes ─────────
+const FOOT_QUOTES = [
+  "俗透的歌词，煽动你恻隐",
+  "毫无代价唱最幸福的歌",
+  "在有生的瞬间能遇到你，竟花光所有运气",
+];
+let footRotateTimer = null;
+let footStartTimer = null;
+let lastQuoteIdx = -1;
+
+function showCountInFoot() {
   if (!state.stats) return;
   const { totalSongs, lyricistsCount } = state.stats;
   elFootContent.innerHTML = `共有中文词库 <b>${totalSongs.toLocaleString()}</b> 首，来自于 <b>${lyricistsCount.toLocaleString()}</b> 位写词人`;
+}
+function showRandomQuote() {
+  if (!FOOT_QUOTES.length) return;
+  let i;
+  do { i = Math.floor(Math.random() * FOOT_QUOTES.length); }
+  while (FOOT_QUOTES.length > 1 && i === lastQuoteIdx);
+  lastQuoteIdx = i;
+  elFootContent.innerHTML = `<span class="quote">${escapeHtml(FOOT_QUOTES[i])}</span>`;
+}
+function startFootRotation() {
+  clearTimeout(footStartTimer);
+  clearInterval(footRotateTimer);
+  showCountInFoot();
+  footStartTimer = setTimeout(() => {
+    showRandomQuote();
+    footRotateTimer = setInterval(showRandomQuote, 60_000);
+  }, 3000);
+}
+function stopFootRotation() {
+  clearTimeout(footStartTimer);
+  clearInterval(footRotateTimer);
+  footStartTimer = null;
+  footRotateTimer = null;
 }
 
 // ── chips ───────────────────────────────────────────
@@ -246,34 +298,32 @@ elBack.addEventListener("click", () => {
 // ── detail ─────────────────────────────────────────
 function renderDetail(s) {
   const albumLine = [s.album, s.year].filter(Boolean).join(" · ");
-  const cover = s.cover_url
-    ? `<img class="cover" src="${escapeAttr(s.cover_url)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
+  const coverInner = s.cover_url
+    ? `<img class="cover" src="${escapeAttr(s.cover_url)}" alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`
     : `<div class="cover" aria-hidden="true"></div>`;
+  const r = s.rating || 0;
+  const rateBtn = `<button class="rate-btn rate-overlay" id="rateBtn" data-id="${escapeAttr(s.id)}" aria-label="加一个 rating">
+      <span class="heart">♥</span><span class="num">${r}</span>
+    </button>`;
 
-  const credits = [];
-  // artist tag (brown) + lyricist tags (black) on one row; composer hidden
-  const artistTag = `<span class="tag static artist">${escapeHtml(s.artist)}</span>`;
+  // order: 词人 tags then 歌手 tag (lyricists first per request)
   const lyricistTags = (s.lyricists || []).map(
     (n) => `<span class="tag static" title="作词">${escapeHtml(n)}</span>`
   ).join("");
-  credits.push(`<div class="credit-row">${artistTag}${lyricistTags}</div>`);
+  const artistTag = `<span class="tag static artist">${escapeHtml(s.artist)}</span>`;
+  const creditRow = `<div class="credit-row">${lyricistTags}${artistTag}</div>`;
 
   const q = state.q.trim();
   const lyrics = highlight(escapeHtml(s.lyrics || "（暂无歌词）"), q);
-  const r = s.rating || 0;
 
+  // detail content order: title → album·year → 词人 + 歌手 → lyrics
   elDetailInner.innerHTML = `
     <div class="cover-wrap">
-      ${cover}
+      <figure class="cover-box">${coverInner}${rateBtn}</figure>
       <div class="head">
-        <div class="title-row">
-          <h1>${escapeHtml(s.title)}</h1>
-          <button class="rate-btn" id="rateBtn" data-id="${escapeAttr(s.id)}" aria-label="加一个 rating">
-            <span class="heart">♥</span><span class="num">${r}</span>
-          </button>
-        </div>
-        ${credits.join("")}
+        <h1>${escapeHtml(s.title)}</h1>
         ${albumLine ? `<div class="album-line">${escapeHtml(albumLine)}</div>` : ""}
+        ${creditRow}
       </div>
     </div>
     <div class="lyrics">${lyrics}</div>
@@ -345,21 +395,26 @@ elDetail.addEventListener("scroll", () => {
   lastDetailY = y;
 }, { passive: true });
 
-// ── footer auto-collapse ───────────────────────────
-let footTimer = null;
-function scheduleFootCollapse() {
-  clearTimeout(footTimer);
-  footTimer = setTimeout(() => {
-    document.body.classList.add("foot-collapsed");
-  }, 3000);
+// ── footer toggle ──────────────────────────────────
+// Initial:  count visible 3s → collapse
+// On open:  count visible 3s → start rotating quotes every 60s; stays open
+// Click ▲ again to collapse
+let initialCollapseTimer = null;
+function collapseFoot() {
+  document.body.classList.add("foot-collapsed");
+  stopFootRotation();
 }
 function expandFoot() {
   document.body.classList.remove("foot-collapsed");
-  scheduleFootCollapse();
+  startFootRotation();
 }
 elFootToggle.addEventListener("click", expandFoot);
-// initial: visible 3s, then collapse
-scheduleFootCollapse();
+elFootContent.addEventListener("click", () => {
+  if (!document.body.classList.contains("foot-collapsed")) collapseFoot();
+});
+// Initial: show count for 3s, then collapse without rotation kicking in
+clearTimeout(initialCollapseTimer);
+initialCollapseTimer = setTimeout(collapseFoot, 3000);
 
 // ── helpers ────────────────────────────────────────
 function makeSnippet(text, q) {
