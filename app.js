@@ -149,9 +149,15 @@ const FOOT_QUOTES = [
   "毫无代价唱最幸福的歌",
   "在有生的瞬间能遇到你，竟花光所有运气",
 ];
+const QUOTE_INTERVAL_MS = 15_000;
 let footRotateTimer = null;
 let footStartTimer = null;
-let lastQuoteIdx = -1;
+let lastShownText = "";
+
+function quotePool() {
+  const fromUser = (state.quotes || []).map((q) => q.text);
+  return [...FOOT_QUOTES, ...fromUser];
+}
 
 function showCountInFoot() {
   if (!state.stats) return;
@@ -159,12 +165,15 @@ function showCountInFoot() {
   elFootContent.innerHTML = `共有中文词库 <b>${totalSongs.toLocaleString()}</b> 首，来自于 <b>${lyricistsCount.toLocaleString()}</b> 位写词人`;
 }
 function showRandomQuote() {
-  if (!FOOT_QUOTES.length) return;
-  let i;
-  do { i = Math.floor(Math.random() * FOOT_QUOTES.length); }
-  while (FOOT_QUOTES.length > 1 && i === lastQuoteIdx);
-  lastQuoteIdx = i;
-  elFootContent.innerHTML = `<span class="quote">${escapeHtml(FOOT_QUOTES[i])}</span>`;
+  const pool = quotePool();
+  if (!pool.length) return;
+  let pick;
+  for (let tries = 0; tries < 8; tries++) {
+    pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pool.length === 1 || pick !== lastShownText) break;
+  }
+  lastShownText = pick;
+  elFootContent.innerHTML = `<span class="quote">${escapeHtml(pick)}</span>`;
 }
 function startFootRotation() {
   clearTimeout(footStartTimer);
@@ -172,7 +181,7 @@ function startFootRotation() {
   showCountInFoot();
   footStartTimer = setTimeout(() => {
     showRandomQuote();
-    footRotateTimer = setInterval(showRandomQuote, 60_000);
+    footRotateTimer = setInterval(showRandomQuote, QUOTE_INTERVAL_MS);
   }, 3000);
 }
 function stopFootRotation() {
@@ -263,22 +272,14 @@ function runSearch() {
 
 // ── render results ─────────────────────────────────
 function renderResults() {
-  const list = state.lastResults;
   const isHomeIdle = !state.q && !state.featureFilter;
-
-  if (list.length === 0) {
-    if (isHomeIdle && state.quotes.length) {
-      renderQuoteWall();
-      return;
-    }
-    elResults.innerHTML = isHomeIdle
-      ? `<div class="empty">输入关键词开始搜索<br>或点击上方词人快筛</div>`
-      : `<div class="empty">没有匹配的歌曲</div>`;
+  if (isHomeIdle) {
+    renderQuoteWall();
     return;
   }
-  if (isHomeIdle && state.quotes.length) {
-    // user just landed: corpus has rows but no query — still prefer quote wall
-    renderQuoteWall();
+  const list = state.lastResults;
+  if (list.length === 0) {
+    elResults.innerHTML = `<div class="empty">没有匹配的歌曲</div>`;
     return;
   }
   const q = state.q.trim();
@@ -322,20 +323,24 @@ elResults.addEventListener("click", (e) => {
 });
 
 function renderQuoteWall() {
-  const sorted = state.quotes.slice().sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-  );
-  const tiles = sorted.map((q) => {
-    const meta = [
-      q.songTitle,
-      q.artist,
-      q.year,
-      (q.lyricists || []).join(" / "),
-    ].filter(Boolean).join(" · ");
+  const items = state.quotes.length
+    ? state.quotes.slice().sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      )
+    : FOOT_QUOTES.map((text, i) => ({
+        id: `seed-${i}`,
+        text,
+        lyricists: [],
+        songTitle: null,
+        seed: true,
+      }));
+  const tiles = items.map((it) => {
+    const lyricistName = (it.lyricists || [])[0] || "";
     return `
-      <article class="quote-tile" data-id="${escapeAttr(q.id)}">
-        <div class="quote-text">${escapeHtml(q.text)}</div>
-        <div class="quote-attr">${escapeHtml(meta)}</div>
+      <article class="quote-tile${it.seed ? " seed" : ""}" data-id="${escapeAttr(it.id)}">
+        <div class="quote-text">${escapeHtml(it.text)}</div>
+        ${lyricistName ? `<div class="quote-author">${escapeHtml(lyricistName)}</div>` : ""}
+        ${it.songTitle ? `<div class="quote-song">${escapeHtml(it.songTitle)}</div>` : ""}
       </article>`;
   }).join("");
   elResults.innerHTML = `<div class="quotewall">${tiles}</div>`;
@@ -503,7 +508,12 @@ function textOffsetIn(container, node, offset) {
 function getLyricsContainer() { return elDetailInner.querySelector(".lyrics"); }
 
 function showPopover(rect, mode, ctx) {
-  const top = window.scrollY + rect.top - 44;
+  // place below the selection; flip above if running off the viewport bottom
+  const PAD = 10;
+  let top = window.scrollY + rect.bottom + PAD;
+  if (rect.bottom + 60 > window.innerHeight) {
+    top = window.scrollY + rect.top - 44;
+  }
   const left = window.scrollX + rect.left + rect.width / 2;
   elPopover.style.top = Math.max(8, top) + "px";
   elPopover.style.left = left + "px";
