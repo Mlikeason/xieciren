@@ -288,6 +288,7 @@ function runSearch() {
 // ── render results ─────────────────────────────────
 function renderResults() {
   const isHomeIdle = !state.q && !state.featureFilter;
+  document.body.classList.toggle("home-idle", isHomeIdle);
   if (isHomeIdle) {
     renderQuoteWall();
     return;
@@ -339,12 +340,12 @@ elResults.addEventListener("click", (e) => {
 
 function quoteTextFontSize(text) {
   const len = text.replace(/\n/g, "").length;
-  if (len <= 6) return 36;
-  if (len <= 12) return 30;
-  if (len <= 24) return 24;
-  if (len <= 40) return 20;
-  if (len <= 60) return 17;
-  return 14;
+  if (len <= 6) return 42;
+  if (len <= 10) return 34;
+  if (len <= 16) return 26;
+  if (len <= 24) return 22;
+  if (len <= 40) return 18;
+  return 15;
 }
 
 function renderQuoteWall() {
@@ -355,8 +356,8 @@ function renderQuoteWall() {
     : FOOT_QUOTES.map((text, i) => ({
         id: `seed-${i}`,
         text,
-        lyricists: [],
-        songTitle: null,
+        lyricists: ["林夕"],
+        songTitle: "再见二丁目",
         seed: true,
       }));
   const tiles = items.map((it) => {
@@ -365,8 +366,10 @@ function renderQuoteWall() {
     return `
       <article class="quote-tile${it.seed ? " seed" : ""}" data-id="${escapeAttr(it.id)}" style="--qfs:${fs}px">
         <div class="quote-text">${escapeHtml(it.text)}</div>
-        ${lyricistName ? `<div class="quote-author">${escapeHtml(lyricistName)}</div>` : ""}
-        ${it.songTitle ? `<div class="quote-song">${escapeHtml(it.songTitle)}</div>` : ""}
+        <div class="quote-credit">
+          ${lyricistName ? `<div class="quote-author">${escapeHtml(lyricistName)}</div>` : ""}
+          ${it.songTitle ? `<div class="quote-song">${escapeHtml(it.songTitle)}</div>` : ""}
+        </div>
       </article>`;
   }).join("");
   elResults.innerHTML = `<div class="quotewall">${tiles}</div>`;

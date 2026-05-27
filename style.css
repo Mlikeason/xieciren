@@ -43,11 +43,11 @@ button { cursor: pointer; background: none; border: none; padding: 0; }
   align-items: center;
   gap: 18px;
   padding: 24px 40px 22px;
-  /* iOS PWA standalone: leave room for the status bar overlay */
   padding-top: max(24px, calc(env(safe-area-inset-top, 0px) + 12px));
   background: var(--bg);
   transition: transform .25s ease, opacity .2s ease;
 }
+.search { margin-left: auto; }
 .brand {
   display: inline-flex;
   align-items: center;
@@ -203,6 +203,10 @@ body.show-detail .chipsbar {
   grid-template-columns: minmax(340px, 420px) 1fr;
   min-height: 0;
 }
+body.home-idle .layout { grid-template-columns: 1fr; }
+body.home-idle .detail { display: none; }
+body.home-idle.show-detail .layout { grid-template-columns: minmax(340px, 420px) 1fr; }
+body.home-idle.show-detail .detail { display: block; }
 .results, .detail {
   overflow-y: auto;
   height: 100%;
@@ -567,20 +571,22 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
 /* ── quote wall (home idle state) ──────────────────── */
 .quotewall {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
   padding: 16px 40px 80px;
 }
 .quote-tile {
   background: var(--ink);
   color: var(--paper);
-  padding: 28px 32px;
+  padding: 24px;
   cursor: pointer;
   transition: transform .15s ease;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 100%;
+  justify-content: space-between;
+  width: calc(33.333% - 7px);
+  aspect-ratio: 1;
+  overflow: hidden;
 }
 .quote-tile:nth-child(4n+2) { background: var(--brown); }
 .quote-tile:nth-child(7n+5) { background: #2c2018; }
@@ -589,26 +595,31 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
 .quote-tile.seed { cursor: default; }
 .quote-tile.seed:hover { transform: none; }
 .quote-tile .quote-text {
-  font-family: var(--serif);
-  font-weight: 500;
+  font-family: var(--sans);
+  font-weight: 800;
   font-size: var(--qfs, 19px);
-  line-height: 1.55;
-  letter-spacing: 0.5px;
+  line-height: 1.2;
   color: var(--paper);
-  white-space: pre-wrap;
   word-break: break-word;
+  flex: 1;
+}
+.quote-tile .quote-credit {
+  margin-top: auto;
+  padding-top: 12px;
 }
 .quote-tile .quote-author {
-  font: 400 11px/1.4 var(--sans);
-  color: var(--accent);
-  letter-spacing: 1px;
-  margin-top: 4px;
-  text-transform: none;
+  font: 500 11px/1.4 var(--sans);
+  color: var(--paper);
+  letter-spacing: 0.5px;
+  display: inline-block;
+  background: rgba(255,255,255,.15);
+  padding: 3px 6px;
+  margin-bottom: 4px;
 }
 .quote-tile .quote-song {
-  font: 400 11px/1.4 var(--sans);
-  color: rgba(255,255,255,.55);
-  letter-spacing: 1px;
+  font: 400 12px/1.4 var(--sans);
+  color: rgba(255,255,255,.7);
+  letter-spacing: 0.5px;
 }
 
 /* ── foot (auto-collapse) ──────────────────────────── */
@@ -670,7 +681,6 @@ body.foot-collapsed .foot-toggle { display: block; }
   .search {
     width: 220px;
     height: 34px;
-    margin-left: auto;
   }
   .scope-btn { padding: 0 8px; font-size: 11.5px; }
   .search-icon { margin: 0 4px; width: 12px; height: 12px; }
@@ -746,23 +756,16 @@ body.foot-collapsed .foot-toggle { display: block; }
   .rate-btn { height: 28px; padding: 0 10px; font-size: 12px; }
   .rate-overlay { bottom: 8px; right: 8px; }
 
-  .quotewall {
-    padding: 12px 16px 80px;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
+  .quotewall { padding: 12px 16px 80px; gap: 8px; }
   .quotewall .quote-tile {
     width: calc(50% - 4px);
-    aspect-ratio: 1;
     padding: 14px;
-    overflow: hidden;
-    justify-content: space-between;
   }
   .quotewall .quote-tile .quote-text {
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 6;
+    -webkit-line-clamp: 5;
   }
 
   .foot-content { padding: 14px 18px 16px; font-size: 11.5px; }
