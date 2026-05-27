@@ -20,7 +20,7 @@
 }
 html, body { height: 100%; margin: 0; }
 body {
-  font: 15px/1.55 var(--sans);
+  font: 16px/1.55 var(--sans);
   color: var(--ink);
   background: var(--bg);
   display: grid;
@@ -73,7 +73,7 @@ button { cursor: pointer; background: none; border: none; padding: 0; }
   display: flex;
   align-items: center;
   height: 38px;
-  width: 280px;
+  width: 300px;
   background: var(--tint);
   border-radius: 0;
   transition: background .18s, width .22s ease;
@@ -96,15 +96,12 @@ button { cursor: pointer; background: none; border: none; padding: 0; }
 }
 #scope:hover { color: var(--ink); }
 .search-icon {
-  width: 13px; height: 13px;
-  margin: 0 6px 0 6px;
-  color: var(--ink-3);
-  flex-shrink: 0;
+  display: none;
 }
 .search input {
   flex: 1; min-width: 0; height: 100%;
   border: 0; background: transparent; outline: none;
-  padding: 0 4px; font-size: 14px;
+  padding: 0 4px; font-size: 16px;
 }
 .search input::placeholder { color: var(--ink-3); }
 .qclear {
@@ -552,7 +549,7 @@ body.foot-collapsed .foot-toggle { display: block; }
   }
   .brand::after { width: 5px; height: 5px; }
   .search {
-    width: 200px;
+    width: 220px;
     height: 34px;
     margin-left: auto;
   }
@@ -562,7 +559,7 @@ body.foot-collapsed .foot-toggle { display: block; }
     background-position: right 4px center;
   }
   .search-icon { margin: 0 4px; width: 12px; height: 12px; }
-  .search input { font-size: 13px; }
+  .search input { font-size: 16px; }
   .qclear { width: 20px; height: 20px; margin-right: 4px; font-size: 16px; }
 
   .chipsbar { padding: 0 16px 12px; }

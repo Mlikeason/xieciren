@@ -1,5 +1,7 @@
 // 写词人 — static lyrics search
 
+document.addEventListener("contextmenu", (e) => e.preventDefault());
+
 const $ = (sel) => document.querySelector(sel);
 const elQ = $("#q");
 const elQClear = $("#qclear");
