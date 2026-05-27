@@ -19,6 +19,7 @@ const state = {
   lyricists: [],
   stats: null,
   ratings: loadRatings(),
+  quotes: loadQuotes(),
   q: "",
   scope: "all",
   featureFilter: null,
@@ -44,6 +45,20 @@ function saveRatings() {
 }
 function ratingOf(id) { return state.ratings[id] || 0; }
 function applyRatings(rows) { for (const s of rows) s.rating = ratingOf(s.id); }
+
+// ── quotes (saved highlights) ──────────────────────
+const QUOTES_KEY = "xieciren-quotes-v1";
+function loadQuotes() {
+  try { return JSON.parse(localStorage.getItem(QUOTES_KEY) || "[]") || []; }
+  catch { return []; }
+}
+function saveQuotes() {
+  try { localStorage.setItem(QUOTES_KEY, JSON.stringify(state.quotes)); }
+  catch (e) { console.warn("quote save failed", e); }
+}
+function quotesForSong(songId) {
+  return state.quotes.filter((q) => q.songId === songId);
+}
 
 // 梁伟文 is 林夕's real name — display the pen name everywhere.
 const ALIAS = { "梁伟文": "林夕" };
@@ -249,10 +264,21 @@ function runSearch() {
 // ── render results ─────────────────────────────────
 function renderResults() {
   const list = state.lastResults;
+  const isHomeIdle = !state.q && !state.featureFilter;
+
   if (list.length === 0) {
-    elResults.innerHTML = state.q || state.featureFilter
-      ? `<div class="empty">没有匹配的歌曲</div>`
-      : `<div class="empty">输入关键词开始搜索<br>或点击上方词人快筛</div>`;
+    if (isHomeIdle && state.quotes.length) {
+      renderQuoteWall();
+      return;
+    }
+    elResults.innerHTML = isHomeIdle
+      ? `<div class="empty">输入关键词开始搜索<br>或点击上方词人快筛</div>`
+      : `<div class="empty">没有匹配的歌曲</div>`;
+    return;
+  }
+  if (isHomeIdle && state.quotes.length) {
+    // user just landed: corpus has rows but no query — still prefer quote wall
+    renderQuoteWall();
     return;
   }
   const q = state.q.trim();
@@ -278,6 +304,11 @@ function renderResults() {
 }
 
 elResults.addEventListener("click", (e) => {
+  const tile = e.target.closest(".quote-tile");
+  if (tile) {
+    openSongFromQuote(tile.dataset.id);
+    return;
+  }
   const row = e.target.closest(".row");
   if (!row) return;
   state.selectedId = row.dataset.id;
@@ -289,6 +320,40 @@ elResults.addEventListener("click", (e) => {
   document.querySelectorAll(".row.active").forEach((el) => el.classList.remove("active"));
   row.classList.add("active");
 });
+
+function renderQuoteWall() {
+  const sorted = state.quotes.slice().sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+  const tiles = sorted.map((q) => {
+    const meta = [
+      q.songTitle,
+      q.artist,
+      q.year,
+      (q.lyricists || []).join(" / "),
+    ].filter(Boolean).join(" · ");
+    return `
+      <article class="quote-tile" data-id="${escapeAttr(q.id)}">
+        <div class="quote-text">${escapeHtml(q.text)}</div>
+        <div class="quote-attr">${escapeHtml(meta)}</div>
+      </article>`;
+  }).join("");
+  elResults.innerHTML = `<div class="quotewall">${tiles}</div>`;
+}
+
+function openSongFromQuote(quoteId) {
+  const q = state.quotes.find((x) => x.id === quoteId);
+  if (!q) return;
+  const song = state.corpus.find((s) => s.id === q.songId);
+  if (!song) { showToast("原曲未在当前词库中"); return; }
+  state.selectedId = song.id;
+  renderDetail(song);
+  document.body.classList.add("show-detail");
+  setTimeout(() => {
+    const target = elDetailInner.querySelector(`.saved-quote[data-id="${quoteId}"]`);
+    if (target) target.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, 60);
+}
 
 elBack.addEventListener("click", () => {
   document.body.classList.remove("show-detail");
@@ -330,6 +395,7 @@ function renderDetail(s) {
   `;
   elDetail.scrollTop = 0;
   document.body.classList.remove("detail-scrolled");
+  applyQuoteHighlights();
 
   $("#rateBtn").addEventListener("click", (e) => onRateClick(e, s));
 }
@@ -415,6 +481,198 @@ elFootContent.addEventListener("click", () => {
 // Initial: show count for 3s, then collapse without rotation kicking in
 clearTimeout(initialCollapseTimer);
 initialCollapseTimer = setTimeout(collapseFoot, 3000);
+
+// ── quotes: select → save, click → manage ─────────
+const elPopover = $("#quotePopover");
+const elToast = $("#toast");
+let popoverState = null; // { mode: 'save'|'manage', songId, range?, quoteId? }
+
+function textOffsetIn(container, node, offset) {
+  if (node === container) return offset;
+  let pos = 0;
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+  let n;
+  while ((n = walker.nextNode())) {
+    if (n === node) return pos + offset;
+    if (node.contains && node.contains(n)) return pos + n.textContent.length;
+    pos += n.textContent.length;
+  }
+  return pos;
+}
+
+function getLyricsContainer() { return elDetailInner.querySelector(".lyrics"); }
+
+function showPopover(rect, mode, ctx) {
+  const top = window.scrollY + rect.top - 44;
+  const left = window.scrollX + rect.left + rect.width / 2;
+  elPopover.style.top = Math.max(8, top) + "px";
+  elPopover.style.left = left + "px";
+  elPopover.dataset.mode = mode;
+  popoverState = { mode, ...ctx };
+  elPopover.hidden = false;
+}
+function hidePopover() {
+  elPopover.hidden = true;
+  popoverState = null;
+}
+
+function showToast(msg) {
+  elToast.textContent = msg;
+  elToast.hidden = false;
+  clearTimeout(elToast._t);
+  elToast._t = setTimeout(() => { elToast.hidden = true; }, 1600);
+}
+
+// detect new selection in the lyrics block
+function onLyricsPointerUp(e) {
+  // give the browser a tick to finalize the selection
+  setTimeout(() => {
+    const lyricsEl = getLyricsContainer();
+    if (!lyricsEl) return hidePopover();
+
+    // case 1: tap on an already-saved quote
+    const hit = e.target.closest(".saved-quote");
+    if (hit && (!window.getSelection().toString().trim())) {
+      const rect = hit.getBoundingClientRect();
+      showPopover(rect, "manage", { quoteId: hit.dataset.id });
+      return;
+    }
+
+    // case 2: a fresh selection that lives entirely inside .lyrics
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return hidePopover();
+    const range = sel.getRangeAt(0);
+    if (range.collapsed) return hidePopover();
+    const text = sel.toString().trim();
+    if (!text) return hidePopover();
+    if (!lyricsEl.contains(range.commonAncestorContainer)) return hidePopover();
+
+    const start = textOffsetIn(lyricsEl, range.startContainer, range.startOffset);
+    const end = textOffsetIn(lyricsEl, range.endContainer, range.endOffset);
+    const lo = Math.min(start, end), hi = Math.max(start, end);
+    if (hi <= lo) return hidePopover();
+
+    const rect = range.getBoundingClientRect();
+    showPopover(rect, "save", {
+      songId: state.selectedId,
+      start: lo,
+      end: hi,
+      text: sel.toString(),
+    });
+  }, 0);
+}
+
+elDetailInner.addEventListener("mouseup", onLyricsPointerUp);
+elDetailInner.addEventListener("touchend", onLyricsPointerUp);
+elDetail.addEventListener("scroll", hidePopover, { passive: true });
+window.addEventListener("scroll", hidePopover, { passive: true });
+window.addEventListener("resize", hidePopover);
+
+elPopover.addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn || !popoverState) return;
+  const action = btn.dataset.action;
+  if (action === "save") saveQuoteFromSelection();
+  else if (action === "copy") copyQuoteText();
+  else if (action === "delete") deleteQuoteById();
+});
+
+function currentDetailSong() {
+  return state.corpus.find((s) => s.id === state.selectedId);
+}
+
+function saveQuoteFromSelection() {
+  const ps = popoverState; if (!ps || ps.mode !== "save") return;
+  const song = currentDetailSong(); if (!song) return;
+  const q = {
+    id: "q-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+    songId: song.id,
+    songTitle: song.title,
+    artist: song.artist,
+    lyricists: song.lyricists || [],
+    year: song.year || null,
+    cover_url: song.cover_url || null,
+    start: ps.start,
+    end: ps.end,
+    text: ps.text,
+    createdAt: new Date().toISOString(),
+  };
+  state.quotes.push(q);
+  saveQuotes();
+  hidePopover();
+  window.getSelection().removeAllRanges();
+  applyQuoteHighlights();
+  showToast("已收藏金句");
+}
+
+function copyQuoteText() {
+  const ps = popoverState; if (!ps) return;
+  const q = state.quotes.find((x) => x.id === ps.quoteId);
+  if (!q) return;
+  navigator.clipboard?.writeText(q.text).then(
+    () => showToast("已复制"),
+    () => showToast("复制失败"),
+  );
+  hidePopover();
+}
+
+function deleteQuoteById() {
+  const ps = popoverState; if (!ps) return;
+  state.quotes = state.quotes.filter((x) => x.id !== ps.quoteId);
+  saveQuotes();
+  hidePopover();
+  applyQuoteHighlights();
+  showToast("已删除");
+}
+
+// Walk text nodes in .lyrics and wrap each saved range in a <span>
+function applyQuoteHighlights() {
+  const container = getLyricsContainer();
+  if (!container) return;
+  const song = currentDetailSong(); if (!song) return;
+
+  // re-render lyrics fresh (strip existing .saved-quote spans by resetting innerHTML)
+  const q = state.q.trim();
+  container.innerHTML = highlight(escapeHtml(song.lyrics || "（暂无歌词）"), q);
+
+  const songQuotes = quotesForSong(song.id)
+    .slice()
+    .sort((a, b) => b.start - a.start);
+  for (const sq of songQuotes) wrapTextRange(container, sq.start, sq.end, sq.id);
+}
+
+function wrapTextRange(container, start, end, id) {
+  let pos = 0;
+  let startNode = null, startOffset = 0, endNode = null, endOffset = 0;
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+  let n;
+  while ((n = walker.nextNode())) {
+    const len = n.textContent.length;
+    if (!startNode && pos + len > start) {
+      startNode = n; startOffset = start - pos;
+    }
+    if (startNode && pos + len >= end) {
+      endNode = n; endOffset = end - pos;
+      break;
+    }
+    pos += len;
+  }
+  if (!startNode || !endNode) return;
+  const range = document.createRange();
+  try {
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+  } catch { return; }
+  const span = document.createElement("span");
+  span.className = "saved-quote";
+  span.dataset.id = id;
+  try {
+    range.surroundContents(span);
+  } catch {
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+  }
+}
 
 // ── helpers ────────────────────────────────────────
 function makeSnippet(text, q) {
