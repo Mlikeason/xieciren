@@ -35,20 +35,23 @@ button { cursor: pointer; background: none; border: none; padding: 0; }
   padding: 28px 40px 22px;
 }
 .brand {
-  font: 600 22px/1 var(--serif);
-  letter-spacing: 8px;
-  padding-right: 6px;
-  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 11px 18px;
+  font: 600 19px/1 var(--serif);
+  letter-spacing: 6px;
   white-space: nowrap;
 }
 .brand::after {
   content: "";
   display: inline-block;
-  width: 5px; height: 5px;
+  width: 6px; height: 6px;
   background: var(--accent);
-  margin-left: -2px;
-  vertical-align: middle;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 #scope {
@@ -129,24 +132,21 @@ body.chips-hidden .chipsbar {
   display: inline-block;
   background: var(--ink);
   color: var(--paper);
-  padding: 3px;
+  padding: 5px;
   font: 500 12px/1.2 var(--sans);
   letter-spacing: 0.4px;
-  border-radius: 1px;
+  white-space: nowrap;
   cursor: pointer;
   user-select: none;
   transition: background .12s, transform .15s;
 }
 .tag:hover { background: #000; }
 .tag.active { background: var(--accent); }
-.tag.clear {
-  background: transparent;
-  color: var(--ink-3);
-  font-style: italic;
-  font-weight: 400;
-}
+.tag.composer { background: #5c3a23; }
+.tag.composer:hover { background: #432a18; }
 .tag.static { cursor: default; }
 .tag.static:hover { background: var(--ink); }
+.tag.composer.static:hover { background: #5c3a23; }
 
 /* ── layout ────────────────────────────────────────── */
 .layout {
@@ -333,16 +333,9 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
 .detail .credit-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-.detail .credit-row .label {
-  color: var(--ink-4);
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  margin-right: 4px;
-  text-transform: uppercase;
+  margin-bottom: 6px;
 }
 .detail .lyrics {
   font: 16.5px/2.05 var(--serif);
@@ -393,10 +386,12 @@ body.foot-collapsed .foot-toggle { display: block; }
     gap: 8px;
   }
   .brand {
-    font-size: 18px;
+    font-size: 16px;
     letter-spacing: 4px;
-    padding-right: 0;
+    padding: 8px 12px;
+    gap: 5px;
   }
+  .brand::after { width: 5px; height: 5px; }
   #scope {
     height: 32px;
     padding: 0 22px 0 0;

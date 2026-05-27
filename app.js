@@ -45,6 +45,32 @@ function saveRatings() {
 function ratingOf(id) { return state.ratings[id] || 0; }
 function applyRatings(rows) { for (const s of rows) s.rating = ratingOf(s.id); }
 
+// Group key: same title + same lyricist set → likely a re-release.
+// Sort uses the earliest year across the group as the "real" composition year.
+function groupKey(s) {
+  const title = (s.title || "").toLowerCase().trim();
+  const ls = s.lyricists || [];
+  if (!title || !ls.length) return null;
+  const k = ls.map((x) => String(x).toLowerCase().trim()).sort().join("/");
+  return title + "|" + k;
+}
+function computeSortYears() {
+  const earliest = new Map();
+  for (const s of state.corpus) {
+    const y = parseYear(s.year);
+    if (y === -Infinity) continue;
+    const k = groupKey(s);
+    if (!k) continue;
+    const cur = earliest.get(k);
+    if (cur === undefined || y < cur) earliest.set(k, y);
+  }
+  for (const s of state.corpus) {
+    const k = groupKey(s);
+    const groupY = k ? earliest.get(k) : undefined;
+    s.sortYear = groupY !== undefined ? groupY : parseYear(s.year);
+  }
+}
+
 // ── data loading ────────────────────────────────────
 async function loadJson(url) {
   const r = await fetch(url);
@@ -64,6 +90,7 @@ async function bootstrap() {
     applyRatings(curated);
     state.corpus = curated;
     state.curatedCount = curated.length;
+    computeSortYears();
     renderChips();
     renderFoot();
     triggerSearch();
@@ -73,6 +100,7 @@ async function bootstrap() {
         applyRatings(extra);
         state.corpus = state.corpus.concat(extra);
         state.extraLoaded = true;
+        computeSortYears();
         triggerSearch();
       })
       .catch((e) => console.warn("extra corpus failed", e));
@@ -89,21 +117,17 @@ function renderFoot() {
 
 // ── chips ───────────────────────────────────────────
 function renderChips() {
-  const buttons = state.lyricists.map((l) => {
+  elChips.innerHTML = state.lyricists.map((l) => {
     const active = state.featureFilter === l.name ? " active" : "";
     return `<button class="tag${active}" data-name="${escapeAttr(l.name)}">${escapeHtml(l.name)}</button>`;
-  });
-  const clear = state.featureFilter
-    ? `<button class="tag clear" data-name="__clear__">清除</button>`
-    : "";
-  elChips.innerHTML = buttons.join("") + clear;
+  }).join("");
 }
 
 elChips.addEventListener("click", (e) => {
   const btn = e.target.closest(".tag");
   if (!btn) return;
   const name = btn.dataset.name;
-  state.featureFilter = name === "__clear__" || state.featureFilter === name ? null : name;
+  state.featureFilter = state.featureFilter === name ? null : name;
   renderChips();
   triggerSearch();
 });
@@ -156,11 +180,11 @@ function runSearch() {
     out.push(s);
     if (out.length >= cap) break;
   }
-  // sort: rating ↓ → year ↓ → popularity ↓ → title
+  // sort: rating ↓ → earliest year for (title+lyricist set) ↓ → popularity ↓ → title
   out.sort((a, b) => {
     const ar = a.rating || 0, br = b.rating || 0;
     if (ar !== br) return br - ar;
-    const ay = parseYear(a.year), by = parseYear(b.year);
+    const ay = a.sortYear ?? -Infinity, by = b.sortYear ?? -Infinity;
     if (ay !== by) return by - ay;
     const ap = a.popularity || 0, bp = b.popularity || 0;
     if (ap !== bp) return bp - ap;
@@ -224,17 +248,15 @@ function renderDetail(s) {
     : `<div class="cover" aria-hidden="true"></div>`;
 
   const lyricistTags = (s.lyricists || []).map(
-    (n) => `<span class="tag static">${escapeHtml(n)}</span>`
+    (n) => `<span class="tag static" title="作词">${escapeHtml(n)}</span>`
   ).join("");
   const composerTags = (s.composers || []).map(
-    (n) => `<span class="tag static">${escapeHtml(n)}</span>`
+    (n) => `<span class="tag static composer" title="作曲">${escapeHtml(n)}</span>`
   ).join("");
 
   const credits = [];
-  if (lyricistTags)
-    credits.push(`<div class="credit-row"><span class="label">词</span>${lyricistTags}</div>`);
-  if (composerTags)
-    credits.push(`<div class="credit-row"><span class="label">曲</span>${composerTags}</div>`);
+  if (lyricistTags) credits.push(`<div class="credit-row">${lyricistTags}</div>`);
+  if (composerTags) credits.push(`<div class="credit-row">${composerTags}</div>`);
 
   const q = state.q.trim();
   const lyrics = highlight(escapeHtml(s.lyrics || "（暂无歌词）"), q);
