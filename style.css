@@ -376,6 +376,7 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
   color: var(--ink);
   max-width: 640px;
   letter-spacing: 0.4px;
+  -webkit-touch-callout: none;
 }
 
 /* ── saved quote highlight in lyrics ───────────────── */

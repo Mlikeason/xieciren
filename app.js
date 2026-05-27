@@ -576,11 +576,14 @@ function onLyricsPointerUp(e) {
     if (hi <= lo) return hidePopover();
 
     const rect = range.getBoundingClientRect();
-    showPopover(rect, "save", {
+    const savedRect = { top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width };
+    const savedText = sel.toString();
+    sel.removeAllRanges();
+    showPopover(savedRect, "save", {
       songId: state.selectedId,
       start: lo,
       end: hi,
-      text: sel.toString(),
+      text: savedText,
     });
   }, 0);
 }
@@ -682,7 +685,7 @@ function shareQuoteAsImage() {
   const palette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
   const { bg, fg } = palette;
 
-  const W = 900, H = 1200;
+  const W = 1080, H = 1080;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
@@ -690,46 +693,58 @@ function shareQuoteAsImage() {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
+  const lines = text.trim().split(/\n/);
+  const mx = 64;
+  const availW = W - mx * 2;
+  const makeFont = (sz) => `900 ${sz}px -apple-system, "PingFang SC", "Heiti SC", "Microsoft YaHei", sans-serif`;
+
+  let maxLineLen = 0;
+  for (const l of lines) if (l.length > maxLineLen) maxLineLen = l.length;
+  let fontSize = Math.floor(availW / (maxLineLen || 1));
+  fontSize = Math.min(fontSize, 220);
+  fontSize = Math.max(fontSize, 60);
+
+  ctx.font = makeFont(fontSize);
+  for (const l of lines) {
+    const mw = ctx.measureText(l).width;
+    if (mw > availW) { fontSize = Math.floor(fontSize * availW / mw); }
+  }
+  ctx.font = makeFont(fontSize);
+
   ctx.fillStyle = fg;
   ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  const lines = text.trim().split(/\n/);
-  const fontSize = 126;
-  ctx.font = `800 ${fontSize}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
-  const lineHeight = fontSize * 1.6;
-  const totalH = lines.length * lineHeight;
-  const startY = (H - totalH) / 2 + lineHeight / 2 - 40;
-  const mx = 72;
+  ctx.textBaseline = "top";
+  const lineHeight = fontSize * 1.15;
+  const startY = mx;
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], mx, startY + i * lineHeight, W - mx * 2);
+    ctx.fillText(lines[i], mx, startY + i * lineHeight);
   }
 
-  const tagFontSize = 24;
-  const tagFont = `500 ${tagFontSize}px -apple-system, "PingFang SC", sans-serif`;
-  ctx.font = tagFont;
-  ctx.textBaseline = "alphabetic";
-  const pad = 10;
-  const metrics = ctx.measureText("M");
-  const textH = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-  let tagY = H - 60;
+  const tagPad = 10;
+  let creditY = H - mx;
 
   if (songTitle) {
-    const tw = ctx.measureText(songTitle).width;
-    const asc = ctx.measureText(songTitle).actualBoundingBoxAscent;
+    const titleSize = 28;
+    ctx.font = `500 ${titleSize}px -apple-system, "PingFang SC", sans-serif`;
     ctx.fillStyle = fg;
-    ctx.fillRect(48, tagY - asc - pad, tw + pad * 2, textH + pad * 2);
-    ctx.fillStyle = bg;
-    ctx.fillText(songTitle, 48 + pad, tagY - asc - pad + pad + asc);
-    tagY -= (textH + pad * 2 + 10);
+    ctx.textBaseline = "bottom";
+    ctx.fillText(songTitle, mx, creditY);
+    creditY -= (titleSize + 16);
   }
 
   if (lyricist) {
-    const lw = ctx.measureText(lyricist).width;
-    const asc = ctx.measureText(lyricist).actualBoundingBoxAscent;
+    const labelSize = 22;
+    ctx.font = `500 ${labelSize}px -apple-system, "PingFang SC", sans-serif`;
+    const lm = ctx.measureText(lyricist);
+    const lw = lm.width;
+    const boxH = labelSize + tagPad * 2;
+    const boxW = lw + tagPad * 2;
+    const boxY = creditY - boxH;
     ctx.fillStyle = fg;
-    ctx.fillRect(48, tagY - asc - pad, lw + pad * 2, textH + pad * 2);
+    ctx.fillRect(mx, boxY, boxW, boxH);
     ctx.fillStyle = bg;
-    ctx.fillText(lyricist, 48 + pad, tagY - asc - pad + pad + asc);
+    ctx.textBaseline = "middle";
+    ctx.fillText(lyricist, mx + tagPad, boxY + boxH / 2);
   }
 
   canvas.toBlob((blob) => {
