@@ -421,6 +421,23 @@ elBack.addEventListener("click", () => {
   document.body.classList.remove("detail-scrolled");
 });
 
+// ── swipe-right to go back (mobile detail) ────────
+let swipeStartX = 0, swipeStartY = 0;
+elDetail.addEventListener("touchstart", (e) => {
+  const t = e.touches[0];
+  swipeStartX = t.clientX;
+  swipeStartY = t.clientY;
+}, { passive: true });
+elDetail.addEventListener("touchend", (e) => {
+  const t = e.changedTouches[0];
+  const dx = t.clientX - swipeStartX;
+  const dy = Math.abs(t.clientY - swipeStartY);
+  if (dx > 80 && dy < 80) {
+    document.body.classList.remove("show-detail");
+    document.body.classList.remove("detail-scrolled");
+  }
+}, { passive: true });
+
 // ── detail ─────────────────────────────────────────
 function renderDetail(s) {
   const albumLine = [s.album, s.year].filter(Boolean).join(" · ");
