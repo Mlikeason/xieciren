@@ -596,6 +596,7 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
   font-weight: 900;
   font-size: var(--qfs, 28px);
   line-height: 1.15;
+  -webkit-text-stroke: 0.5px currentColor;
   color: inherit;
   word-break: break-word;
   white-space: pre-wrap;
@@ -609,7 +610,8 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
 .quote-tile .quote-song {
   font: 500 11px/1.4 var(--sans);
   letter-spacing: 0.5px;
-  display: inline-block;
+  display: block;
+  width: fit-content;
   padding: 3px 6px;
   margin-bottom: 4px;
   background: var(--tile-fg);
@@ -756,6 +758,7 @@ body.foot-collapsed .foot-toggle { display: block; }
     padding: 14px;
   }
   .quotewall .quote-tile .quote-text {
+    font-size: calc(var(--qfs, 28px) * 0.55);
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
