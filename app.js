@@ -5,12 +5,12 @@ const elQ = $("#q");
 const elQClear = $("#qclear");
 const elScope = $("#scope");
 const elChips = $("#chips");
-const elCount = $("#count");
 const elResults = $("#results");
 const elDetail = $("#detail");
 const elDetailInner = $(".detail-inner");
 const elBack = $("#back");
-const elFoot = $("#foot");
+const elFootContent = $("#footContent");
+const elFootToggle = $("#footToggle");
 
 const state = {
   corpus: [],
@@ -18,6 +18,7 @@ const state = {
   extraLoaded: false,
   lyricists: [],
   stats: null,
+  ratings: loadRatings(),
   q: "",
   scope: "all",
   featureFilter: null,
@@ -27,6 +28,22 @@ const state = {
 
 const MAX_RESULTS = 500;
 const SNIPPET_LEN = 56;
+const RATINGS_KEY = "xieciren-ratings-v1";
+
+// ── ratings (localStorage) ─────────────────────────
+function loadRatings() {
+  try {
+    return JSON.parse(localStorage.getItem(RATINGS_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+function saveRatings() {
+  try { localStorage.setItem(RATINGS_KEY, JSON.stringify(state.ratings)); }
+  catch (e) { console.warn("rating save failed", e); }
+}
+function ratingOf(id) { return state.ratings[id] || 0; }
+function applyRatings(rows) { for (const s of rows) s.rating = ratingOf(s.id); }
 
 // ── data loading ────────────────────────────────────
 async function loadJson(url) {
@@ -44,6 +61,7 @@ async function bootstrap() {
     ]);
     state.lyricists = lyricists;
     state.stats = stats;
+    applyRatings(curated);
     state.corpus = curated;
     state.curatedCount = curated.length;
     renderChips();
@@ -52,6 +70,7 @@ async function bootstrap() {
 
     loadJson("data/corpus_extra.json")
       .then((extra) => {
+        applyRatings(extra);
         state.corpus = state.corpus.concat(extra);
         state.extraLoaded = true;
         triggerSearch();
@@ -65,23 +84,23 @@ async function bootstrap() {
 function renderFoot() {
   if (!state.stats) return;
   const { totalSongs, lyricistsCount } = state.stats;
-  elFoot.innerHTML = `共有中文词库 <b>${totalSongs.toLocaleString()}</b> 首，来自于 <b>${lyricistsCount.toLocaleString()}</b> 位写词人`;
+  elFootContent.innerHTML = `共有中文词库 <b>${totalSongs.toLocaleString()}</b> 首，来自于 <b>${lyricistsCount.toLocaleString()}</b> 位写词人`;
 }
 
 // ── chips ───────────────────────────────────────────
 function renderChips() {
   const buttons = state.lyricists.map((l) => {
     const active = state.featureFilter === l.name ? " active" : "";
-    return `<button class="chip${active}" data-name="${escapeAttr(l.name)}">${escapeHtml(l.name)}<span class="n">${l.count}</span></button>`;
+    return `<button class="tag${active}" data-name="${escapeAttr(l.name)}">${escapeHtml(l.name)}</button>`;
   });
   const clear = state.featureFilter
-    ? `<button class="chip clear" data-name="__clear__">清除</button>`
+    ? `<button class="tag clear" data-name="__clear__">清除</button>`
     : "";
   elChips.innerHTML = buttons.join("") + clear;
 }
 
 elChips.addEventListener("click", (e) => {
-  const btn = e.target.closest(".chip");
+  const btn = e.target.closest(".tag");
   if (!btn) return;
   const name = btn.dataset.name;
   state.featureFilter = name === "__clear__" || state.featureFilter === name ? null : name;
@@ -94,6 +113,12 @@ let searchTimer = null;
 function triggerSearch() {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runSearch, 180);
+}
+
+function parseYear(y) {
+  if (!y) return -Infinity;
+  const n = parseInt(String(y).slice(0, 4), 10);
+  return Number.isFinite(n) ? n : -Infinity;
 }
 
 function runSearch() {
@@ -131,26 +156,18 @@ function runSearch() {
     out.push(s);
     if (out.length >= cap) break;
   }
+  // sort: rating ↓ → year ↓ → popularity ↓ → title
   out.sort((a, b) => {
-    const af = a.features ? 1 : 0;
-    const bf = b.features ? 1 : 0;
-    if (af !== bf) return bf - af;
-    const ap = a.popularity || 0;
-    const bp = b.popularity || 0;
+    const ar = a.rating || 0, br = b.rating || 0;
+    if (ar !== br) return br - ar;
+    const ay = parseYear(a.year), by = parseYear(b.year);
+    if (ay !== by) return by - ay;
+    const ap = a.popularity || 0, bp = b.popularity || 0;
     if (ap !== bp) return bp - ap;
     return a.title.localeCompare(b.title);
   });
   state.lastResults = out.slice(0, MAX_RESULTS);
-  renderCount(out.length);
   renderResults();
-}
-
-function renderCount(n) {
-  if (!state.q && !state.featureFilter) {
-    elCount.textContent = "";
-    return;
-  }
-  elCount.innerHTML = `<b>${n.toLocaleString()}</b> 条`;
 }
 
 // ── render results ─────────────────────────────────
@@ -170,9 +187,10 @@ function renderResults() {
       : escapeHtml(s.artist);
     const lyricistsText = (s.lyricists || []).join(" / ");
     const lyricLine = showSnip ? makeSnippet(s.lyrics || "", q) : "";
+    const ratingMini = s.rating ? `<span class="rating-mini">+${s.rating}</span>` : "";
     return `
       <div class="row${state.selectedId === s.id ? " active" : ""}" data-id="${escapeAttr(s.id)}">
-        <div class="title">${escapeHtml(s.title)}</div>
+        <div class="title"><span>${escapeHtml(s.title)}</span>${ratingMini}</div>
         <div class="meta">${meta}</div>
         ${lyricistsText ? `<div class="lyricist"><b>词</b>${escapeHtml(lyricistsText)}</div>` : ""}
         ${lyricLine ? `<div class="snip">${lyricLine}</div>` : ""}
@@ -204,30 +222,74 @@ function renderDetail(s) {
   const cover = s.cover_url
     ? `<img class="cover" src="${escapeAttr(s.cover_url)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
     : `<div class="cover" aria-hidden="true"></div>`;
+
+  const lyricistTags = (s.lyricists || []).map(
+    (n) => `<span class="tag static">${escapeHtml(n)}</span>`
+  ).join("");
+  const composerTags = (s.composers || []).map(
+    (n) => `<span class="tag static">${escapeHtml(n)}</span>`
+  ).join("");
+
   const credits = [];
-  if (s.lyricists && s.lyricists.length)
-    credits.push(`<span class="credit-row"><b>词</b>${escapeHtml(s.lyricists.join(" / "))}</span>`);
-  if (s.composers && s.composers.length)
-    credits.push(`<span class="credit-row"><b>曲</b>${escapeHtml(s.composers.join(" / "))}</span>`);
+  if (lyricistTags)
+    credits.push(`<div class="credit-row"><span class="label">词</span>${lyricistTags}</div>`);
+  if (composerTags)
+    credits.push(`<div class="credit-row"><span class="label">曲</span>${composerTags}</div>`);
 
   const q = state.q.trim();
   const lyrics = highlight(escapeHtml(s.lyrics || "（暂无歌词）"), q);
+  const r = s.rating || 0;
 
   elDetailInner.innerHTML = `
     <div class="cover-wrap">
       ${cover}
       <div class="head">
-        <h1>${escapeHtml(s.title)}</h1>
+        <div class="title-row">
+          <h1>${escapeHtml(s.title)}</h1>
+          <button class="rate-btn" id="rateBtn" data-id="${escapeAttr(s.id)}" aria-label="加一个 rating">
+            <span class="heart">♥</span><span class="num">${r}</span>
+          </button>
+        </div>
         <div class="artist">${escapeHtml(s.artist)}</div>
-        <div class="meta">
+        <div class="meta-block">
           ${albumLine ? `<div class="album-line">${escapeHtml(albumLine)}</div>` : ""}
-          ${credits.length ? `<div class="credits">${credits.join("")}</div>` : ""}
+          ${credits.join("")}
         </div>
       </div>
     </div>
     <div class="lyrics">${lyrics}</div>
   `;
   elDetail.scrollTop = 0;
+
+  $("#rateBtn").addEventListener("click", (e) => onRateClick(e, s));
+}
+
+function onRateClick(e, song) {
+  song.rating = (song.rating || 0) + 1;
+  state.ratings[song.id] = song.rating;
+  saveRatings();
+
+  const btn = e.currentTarget;
+  const num = btn.querySelector(".num");
+  num.textContent = song.rating;
+
+  btn.classList.remove("pulse");
+  void btn.offsetWidth;
+  btn.classList.add("pulse");
+
+  // floating "+1"
+  const float = document.createElement("span");
+  float.className = "rate-float";
+  float.textContent = "+1";
+  const rect = btn.getBoundingClientRect();
+  const parentRect = btn.parentElement.getBoundingClientRect();
+  float.style.left = (rect.right - parentRect.left + 4) + "px";
+  float.style.top = (rect.top - parentRect.top + 6) + "px";
+  btn.parentElement.appendChild(float);
+  setTimeout(() => float.remove(), 800);
+
+  // re-sort lazily so the next search reflects the bump without flickering current view
+  triggerSearch();
 }
 
 // ── auto-hide chips on scroll-down ─────────────────
@@ -247,6 +309,22 @@ function onResultsScroll() {
   lastScrollY = y;
 }
 elResults.addEventListener("scroll", onResultsScroll, { passive: true });
+
+// ── footer auto-collapse ───────────────────────────
+let footTimer = null;
+function scheduleFootCollapse() {
+  clearTimeout(footTimer);
+  footTimer = setTimeout(() => {
+    document.body.classList.add("foot-collapsed");
+  }, 3000);
+}
+function expandFoot() {
+  document.body.classList.remove("foot-collapsed");
+  scheduleFootCollapse();
+}
+elFootToggle.addEventListener("click", expandFoot);
+// initial: visible 3s, then collapse
+scheduleFootCollapse();
 
 // ── helpers ────────────────────────────────────────
 function makeSnippet(text, q) {

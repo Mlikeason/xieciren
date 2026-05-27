@@ -9,10 +9,17 @@
 <title>写词人 · 中文歌词搜索</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="foot-open">
 
 <header class="topbar">
   <div class="brand">写词人</div>
+  <select id="scope" title="搜索范围">
+    <option value="all">全部</option>
+    <option value="lyric">歌词</option>
+    <option value="title">歌名</option>
+    <option value="artist">歌手</option>
+    <option value="lyricist">词人</option>
+  </select>
   <div class="search">
     <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true">
       <circle cx="7" cy="7" r="5.25" fill="none" stroke="currentColor" stroke-width="1.4"/>
@@ -22,18 +29,10 @@
            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     <button id="qclear" class="qclear" type="button" aria-label="清除" hidden>×</button>
   </div>
-  <select id="scope" title="搜索范围">
-    <option value="all">全部</option>
-    <option value="lyric">歌词</option>
-    <option value="title">歌名</option>
-    <option value="artist">歌手</option>
-    <option value="lyricist">词人</option>
-  </select>
 </header>
 
 <nav class="chipsbar" id="chipsbar" aria-label="词人快筛">
   <div class="chips" id="chips"></div>
-  <div class="count" id="count"></div>
 </nav>
 
 <main class="layout">
@@ -48,7 +47,12 @@
   </aside>
 </main>
 
-<footer class="foot" id="foot">—</footer>
+<footer class="foot" id="foot">
+  <button class="foot-toggle" id="footToggle" aria-label="展开信息" title="信息">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 10l5-5 5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="foot-content" id="footContent">—</div>
+</footer>
 
 <script src="app.js"></script>
 </body>
