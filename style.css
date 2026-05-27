@@ -20,7 +20,7 @@
 }
 html, body { height: 100%; margin: 0; }
 body {
-  font: 16px/1.55 var(--sans);
+  font: 17px/1.55 var(--sans);
   color: var(--ink);
   background: var(--bg);
   display: grid;

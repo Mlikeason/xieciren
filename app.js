@@ -23,7 +23,7 @@ const state = {
   ratings: loadRatings(),
   quotes: loadQuotes(),
   q: "",
-  scope: "all",
+  scope: "title",
   featureFilter: null,
   selectedId: null,
   lastResults: [],
@@ -585,6 +585,7 @@ elPopover.addEventListener("click", (e) => {
   if (!btn || !popoverState) return;
   const action = btn.dataset.action;
   if (action === "save") saveQuoteFromSelection();
+  else if (action === "share") shareQuoteAsImage();
   else if (action === "copy") copyQuoteText();
   else if (action === "delete") deleteQuoteById();
 });
@@ -635,6 +636,74 @@ function deleteQuoteById() {
   hidePopover();
   applyQuoteHighlights();
   showToast("已删除");
+}
+
+function shareQuoteAsImage() {
+  const ps = popoverState; if (!ps) return;
+  let text, lyricist, songTitle;
+  if (ps.mode === "save") {
+    text = ps.text;
+    const song = currentDetailSong();
+    lyricist = song?.lyricists?.join(" / ") || "";
+    songTitle = song?.title || "";
+  } else {
+    const q = state.quotes.find((x) => x.id === ps.quoteId);
+    if (!q) return;
+    text = q.text;
+    lyricist = q.lyricists?.join(" / ") || "";
+    songTitle = q.songTitle || "";
+  }
+
+  const COLORS = [
+    "#1a1a1a", "#2c2018", "#2a3037", "#3d2b1f", "#1b3a4b",
+    "#2d4a3e", "#4a2c40", "#2b2d42", "#5c3a23", "#3a3a5c",
+  ];
+  const bg = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+  const W = 900, H = 1200;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const lines = text.trim().split(/\n/);
+  const fontSize = Math.min(52, Math.floor(700 / (lines.length || 1)));
+  ctx.font = `500 ${fontSize}px "Noto Serif SC", "Songti SC", serif`;
+  const lineHeight = fontSize * 1.8;
+  const totalH = lines.length * lineHeight;
+  const startY = (H - totalH) / 2 + lineHeight / 2;
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], W / 2, startY + i * lineHeight, W - 120);
+  }
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "bottom";
+  ctx.fillStyle = "rgba(255,255,255,.55)";
+  ctx.font = '400 22px -apple-system, "PingFang SC", sans-serif';
+  const credit = `${lyricist}${lyricist && songTitle ? "　" : ""}「${songTitle}」`;
+  ctx.fillText(credit, 48, H - 48, W - 96);
+
+  canvas.toBlob((blob) => {
+    if (!blob) return showToast("生成失败");
+    const file = new File([blob], "quote.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file] }).catch(() => {});
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "quote.png";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast("已保存图片");
+    }
+    hidePopover();
+  }, "image/png");
 }
 
 // Walk text nodes in .lyrics and wrap each saved range in a <span>
