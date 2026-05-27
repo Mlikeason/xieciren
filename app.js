@@ -149,11 +149,30 @@ async function bootstrap() {
 
 // ── footer messages: count + lyric quotes ─────────
 const FOOT_QUOTES = [
-  "俗透的歌词 煽动你恻隐",
-  "毫无代价唱最幸福的歌",
-  "在有生的瞬间能遇到你 竟花光所有运气",
-  "原来我非不快乐 只我一人没发觉",
-  "纵使意难平 痛得高兴",
+  "俗透的歌词\n煽动你恻隐",
+  "毫无代价\n唱最幸福的歌",
+  "在有生的瞬间\n能遇到你\n竟花光所有运气",
+  "原来我非不快乐\n只我一人没发觉",
+  "纵使意难平\n痛得高兴",
+];
+const SEED_SONGS = [
+  { text: FOOT_QUOTES[0], lyricist: "林夕", song: "K歌之王" },
+  { text: FOOT_QUOTES[1], lyricist: "林夕", song: "我的快乐时代" },
+  { text: FOOT_QUOTES[2], lyricist: "林夕", song: "明年今日" },
+  { text: FOOT_QUOTES[3], lyricist: "林夕", song: "再见二丁目" },
+  { text: FOOT_QUOTES[4], lyricist: "林夕", song: "歌·颂" },
+];
+const TILE_PALETTES = [
+  { bg: "#2d1b4e", fg: "#f0d6e8" },
+  { bg: "#1b3a4b", fg: "#e0f0f5" },
+  { bg: "#5c3a23", fg: "#f5e6d3" },
+  { bg: "#2d4a3e", fg: "#d4ead9" },
+  { bg: "#1a1a1a", fg: "#f5f0e8" },
+  { bg: "#4a2c40", fg: "#f0d6e8" },
+  { bg: "#2b2d42", fg: "#edf2f4" },
+  { bg: "#3a3a5c", fg: "#e8e8f5" },
+  { bg: "#8b2500", fg: "#fde8d0" },
+  { bg: "#1a472a", fg: "#d5ecd4" },
 ];
 const QUOTE_INTERVAL_MS = 15_000;
 let footRotateTimer = null;
@@ -179,7 +198,8 @@ function showRandomQuote() {
     if (pool.length === 1 || pick !== lastShownText) break;
   }
   lastShownText = pick;
-  elFootContent.innerHTML = `<span class="quote" id="footQuote">${escapeHtml(pick)}</span>`;
+  const footText = pick.replace(/\n/g, " ");
+  elFootContent.innerHTML = `<span class="quote" id="footQuote">${escapeHtml(footText)}</span>`;
 }
 function startFootRotation() {
   clearTimeout(footStartTimer);
@@ -340,12 +360,16 @@ elResults.addEventListener("click", (e) => {
 
 function quoteTextFontSize(text) {
   const len = text.replace(/\n/g, "").length;
-  if (len <= 6) return 42;
-  if (len <= 10) return 34;
-  if (len <= 16) return 26;
-  if (len <= 24) return 22;
-  if (len <= 40) return 18;
-  return 15;
+  if (len <= 6) return 64;
+  if (len <= 10) return 48;
+  if (len <= 16) return 38;
+  if (len <= 24) return 32;
+  if (len <= 40) return 26;
+  return 20;
+}
+
+function pickPalette(i) {
+  return TILE_PALETTES[i % TILE_PALETTES.length];
 }
 
 function renderQuoteWall() {
@@ -353,18 +377,21 @@ function renderQuoteWall() {
     ? state.quotes.slice().sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       )
-    : FOOT_QUOTES.map((text, i) => ({
+    : SEED_SONGS.map((s, i) => ({
         id: `seed-${i}`,
-        text,
-        lyricists: ["林夕"],
-        songTitle: "再见二丁目",
+        text: s.text,
+        lyricists: [s.lyricist],
+        songTitle: s.song,
         seed: true,
       }));
-  const tiles = items.map((it) => {
+  const shuffled = [...TILE_PALETTES].sort(() => Math.random() - 0.5);
+  const tiles = items.map((it, i) => {
     const lyricistName = (it.lyricists || [])[0] || "";
+    const p = shuffled[i % shuffled.length];
     const fs = quoteTextFontSize(it.text);
     return `
-      <article class="quote-tile${it.seed ? " seed" : ""}" data-id="${escapeAttr(it.id)}" style="--qfs:${fs}px">
+      <article class="quote-tile${it.seed ? " seed" : ""}" data-id="${escapeAttr(it.id)}"
+        style="--qfs:${fs}px;--tile-bg:${p.bg};--tile-fg:${p.fg};background:${p.bg};color:${p.fg}">
         <div class="quote-text">${escapeHtml(it.text)}</div>
         <div class="quote-credit">
           ${lyricistName ? `<div class="quote-author">${escapeHtml(lyricistName)}</div>` : ""}

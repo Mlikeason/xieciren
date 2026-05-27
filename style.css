@@ -588,38 +588,32 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
   aspect-ratio: 1;
   overflow: hidden;
 }
-.quote-tile:nth-child(4n+2) { background: var(--brown); }
-.quote-tile:nth-child(7n+5) { background: #2c2018; }
-.quote-tile:nth-child(11n+7) { background: #2a3037; }
 .quote-tile:hover { transform: translateY(-2px); }
 .quote-tile.seed { cursor: default; }
 .quote-tile.seed:hover { transform: none; }
 .quote-tile .quote-text {
   font-family: var(--sans);
-  font-weight: 800;
-  font-size: var(--qfs, 19px);
-  line-height: 1.2;
-  color: var(--paper);
+  font-weight: 900;
+  font-size: var(--qfs, 28px);
+  line-height: 1.15;
+  color: inherit;
   word-break: break-word;
+  white-space: pre-wrap;
   flex: 1;
 }
 .quote-tile .quote-credit {
   margin-top: auto;
   padding-top: 12px;
 }
-.quote-tile .quote-author {
+.quote-tile .quote-author,
+.quote-tile .quote-song {
   font: 500 11px/1.4 var(--sans);
-  color: var(--paper);
   letter-spacing: 0.5px;
   display: inline-block;
-  background: rgba(255,255,255,.15);
   padding: 3px 6px;
   margin-bottom: 4px;
-}
-.quote-tile .quote-song {
-  font: 400 12px/1.4 var(--sans);
-  color: rgba(255,255,255,.7);
-  letter-spacing: 0.5px;
+  background: var(--tile-fg);
+  color: var(--tile-bg);
 }
 
 /* ── foot (auto-collapse) ──────────────────────────── */
