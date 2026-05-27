@@ -324,6 +324,15 @@ elResults.addEventListener("click", (e) => {
   row.classList.add("active");
 });
 
+function quoteTextFontSize(text) {
+  const len = text.replace(/\n/g, "").length;
+  if (len <= 10) return 36;
+  if (len <= 20) return 30;
+  if (len <= 40) return 24;
+  if (len <= 60) return 20;
+  return 17;
+}
+
 function renderQuoteWall() {
   const items = state.quotes.length
     ? state.quotes.slice().sort(
@@ -338,9 +347,10 @@ function renderQuoteWall() {
       }));
   const tiles = items.map((it) => {
     const lyricistName = (it.lyricists || [])[0] || "";
+    const fs = quoteTextFontSize(it.text);
     return `
       <article class="quote-tile${it.seed ? " seed" : ""}" data-id="${escapeAttr(it.id)}">
-        <div class="quote-text">${escapeHtml(it.text)}</div>
+        <div class="quote-text" style="font-size:${fs}px">${escapeHtml(it.text)}</div>
         ${lyricistName ? `<div class="quote-author">${escapeHtml(lyricistName)}</div>` : ""}
         ${it.songTitle ? `<div class="quote-song">${escapeHtml(it.songTitle)}</div>` : ""}
       </article>`;
