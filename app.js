@@ -698,17 +698,7 @@ function shareQuoteAsImage() {
   const availW = W - mx * 2;
   const makeFont = (sz) => `900 ${sz}px -apple-system, "PingFang SC", "Heiti SC", "Microsoft YaHei", sans-serif`;
 
-  let maxLineLen = 0;
-  for (const l of lines) if (l.length > maxLineLen) maxLineLen = l.length;
-  let fontSize = Math.floor(availW / (maxLineLen || 1));
-  fontSize = Math.min(fontSize, 220);
-  fontSize = Math.max(fontSize, 60);
-
-  ctx.font = makeFont(fontSize);
-  for (const l of lines) {
-    const mw = ctx.measureText(l).width;
-    if (mw > availW) { fontSize = Math.floor(fontSize * availW / mw); }
-  }
+  let fontSize = Math.floor(availW / 7);
   ctx.font = makeFont(fontSize);
 
   ctx.fillStyle = fg;
@@ -723,28 +713,25 @@ function shareQuoteAsImage() {
   const tagPad = 10;
   let creditY = H - mx;
 
-  if (songTitle) {
-    const titleSize = 28;
-    ctx.font = `500 ${titleSize}px -apple-system, "PingFang SC", sans-serif`;
-    ctx.fillStyle = fg;
-    ctx.textBaseline = "bottom";
-    ctx.fillText(songTitle, mx, creditY);
-    creditY -= (titleSize + 16);
-  }
-
-  if (lyricist) {
-    const labelSize = 22;
-    ctx.font = `500 ${labelSize}px -apple-system, "PingFang SC", sans-serif`;
-    const lm = ctx.measureText(lyricist);
-    const lw = lm.width;
-    const boxH = labelSize + tagPad * 2;
-    const boxW = lw + tagPad * 2;
-    const boxY = creditY - boxH;
+  const drawTag = (label, size, y) => {
+    ctx.font = `500 ${size}px -apple-system, "PingFang SC", sans-serif`;
+    const tw = ctx.measureText(label).width;
+    const boxH = size + tagPad * 2;
+    const boxW = tw + tagPad * 2;
+    const boxY = y - boxH;
     ctx.fillStyle = fg;
     ctx.fillRect(mx, boxY, boxW, boxH);
     ctx.fillStyle = bg;
     ctx.textBaseline = "middle";
-    ctx.fillText(lyricist, mx + tagPad, boxY + boxH / 2);
+    ctx.fillText(label, mx + tagPad, boxY + boxH / 2);
+    return boxY;
+  };
+
+  if (songTitle) {
+    creditY = drawTag(songTitle, 28, creditY) - 10;
+  }
+  if (lyricist) {
+    drawTag(lyricist, 22, creditY);
   }
 
   canvas.toBlob((blob) => {
