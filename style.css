@@ -408,7 +408,7 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
 }
 .detail .lyrics {
   margin-top: 4px;
-  font: 16.5px/2.05 var(--serif);
+  font: 17.5px/2.05 var(--serif);
   white-space: pre-wrap;
   color: var(--ink);
   max-width: 640px;
@@ -738,7 +738,7 @@ body.foot-collapsed .foot-toggle { display: block; }
   .detail .album-line { margin-bottom: 14px; }
   .detail .credit-row { justify-content: center; }
   .detail .lyrics {
-    font-size: 15.5px;
+    font-size: 16.5px;
     line-height: 2.05;
     text-align: center;
     margin: 0 auto;

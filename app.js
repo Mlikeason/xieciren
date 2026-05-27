@@ -453,7 +453,7 @@ function extractCoverColor(url) {
       const score = sat * 2 + Math.abs(lum - 128);
       if (score > bestSat) { bestSat = score; bestR = r; bestG = g; bestB = b; }
     }
-    elDetail.style.background = `linear-gradient(180deg, rgba(${bestR},${bestG},${bestB},0.15) 0%, var(--paper) 480px)`;
+    elDetail.style.background = `rgba(${bestR},${bestG},${bestB},0.08)`;
   };
   img.onerror = () => {};
   img.src = url;
