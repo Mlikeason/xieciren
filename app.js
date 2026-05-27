@@ -211,7 +211,9 @@ function renderResults() {
       : escapeHtml(s.artist);
     const lyricistsText = (s.lyricists || []).join(" / ");
     const lyricLine = showSnip ? makeSnippet(s.lyrics || "", q) : "";
-    const ratingMini = s.rating ? `<span class="rating-mini">+${s.rating}</span>` : "";
+    const ratingMini = s.rating
+      ? `<span class="rating-mini"><span class="heart">♥</span><span class="num">${s.rating}</span></span>`
+      : "";
     return `
       <div class="row${state.selectedId === s.id ? " active" : ""}" data-id="${escapeAttr(s.id)}">
         <div class="title"><span>${escapeHtml(s.title)}</span>${ratingMini}</div>
@@ -238,6 +240,7 @@ elResults.addEventListener("click", (e) => {
 
 elBack.addEventListener("click", () => {
   document.body.classList.remove("show-detail");
+  document.body.classList.remove("detail-scrolled");
 });
 
 // ── detail ─────────────────────────────────────────
@@ -247,16 +250,13 @@ function renderDetail(s) {
     ? `<img class="cover" src="${escapeAttr(s.cover_url)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
     : `<div class="cover" aria-hidden="true"></div>`;
 
+  const credits = [];
+  // artist tag (brown) + lyricist tags (black) on one row; composer hidden
+  const artistTag = `<span class="tag static artist">${escapeHtml(s.artist)}</span>`;
   const lyricistTags = (s.lyricists || []).map(
     (n) => `<span class="tag static" title="作词">${escapeHtml(n)}</span>`
   ).join("");
-  const composerTags = (s.composers || []).map(
-    (n) => `<span class="tag static composer" title="作曲">${escapeHtml(n)}</span>`
-  ).join("");
-
-  const credits = [];
-  if (lyricistTags) credits.push(`<div class="credit-row">${lyricistTags}</div>`);
-  if (composerTags) credits.push(`<div class="credit-row">${composerTags}</div>`);
+  credits.push(`<div class="credit-row">${artistTag}${lyricistTags}</div>`);
 
   const q = state.q.trim();
   const lyrics = highlight(escapeHtml(s.lyrics || "（暂无歌词）"), q);
@@ -272,16 +272,14 @@ function renderDetail(s) {
             <span class="heart">♥</span><span class="num">${r}</span>
           </button>
         </div>
-        <div class="artist">${escapeHtml(s.artist)}</div>
-        <div class="meta-block">
-          ${albumLine ? `<div class="album-line">${escapeHtml(albumLine)}</div>` : ""}
-          ${credits.join("")}
-        </div>
+        ${credits.join("")}
+        ${albumLine ? `<div class="album-line">${escapeHtml(albumLine)}</div>` : ""}
       </div>
     </div>
     <div class="lyrics">${lyrics}</div>
   `;
   elDetail.scrollTop = 0;
+  document.body.classList.remove("detail-scrolled");
 
   $("#rateBtn").addEventListener("click", (e) => onRateClick(e, s));
 }
@@ -331,6 +329,21 @@ function onResultsScroll() {
   lastScrollY = y;
 }
 elResults.addEventListener("scroll", onResultsScroll, { passive: true });
+
+// detail panel: hide topbar when scrolling content up (mobile pattern)
+let lastDetailY = 0;
+elDetail.addEventListener("scroll", () => {
+  const y = elDetail.scrollTop;
+  const dy = y - lastDetailY;
+  if (y < 30) {
+    document.body.classList.remove("detail-scrolled");
+  } else if (dy > 4) {
+    document.body.classList.add("detail-scrolled");
+  } else if (dy < -8) {
+    document.body.classList.remove("detail-scrolled");
+  }
+  lastDetailY = y;
+}, { passive: true });
 
 // ── footer auto-collapse ───────────────────────────
 let footTimer = null;
@@ -406,6 +419,7 @@ document.addEventListener("keydown", (e) => {
       triggerSearch();
     } else if (document.body.classList.contains("show-detail")) {
       document.body.classList.remove("show-detail");
+      document.body.classList.remove("detail-scrolled");
     }
   }
 });
