@@ -693,13 +693,28 @@ function shareQuoteAsImage() {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  const lines = text.trim().split(/\n/);
+  const rawLines = text.trim().split(/\n/);
   const mx = 64;
   const availW = W - mx * 2;
   const makeFont = (sz) => `900 ${sz}px -apple-system, "PingFang SC", "Heiti SC", "Microsoft YaHei", sans-serif`;
 
-  let fontSize = Math.floor(availW / 7);
+  const fontSize = Math.floor(availW / 7);
   ctx.font = makeFont(fontSize);
+
+  const lines = [];
+  for (const raw of rawLines) {
+    if (!raw) { lines.push(""); continue; }
+    let cur = "";
+    for (const ch of raw) {
+      if (ctx.measureText(cur + ch).width > availW) {
+        lines.push(cur);
+        cur = ch;
+      } else {
+        cur += ch;
+      }
+    }
+    if (cur) lines.push(cur);
+  }
 
   ctx.fillStyle = fg;
   ctx.textAlign = "left";
