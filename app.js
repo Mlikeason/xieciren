@@ -326,11 +326,12 @@ elResults.addEventListener("click", (e) => {
 
 function quoteTextFontSize(text) {
   const len = text.replace(/\n/g, "").length;
-  if (len <= 10) return 36;
-  if (len <= 20) return 30;
-  if (len <= 40) return 24;
-  if (len <= 60) return 20;
-  return 17;
+  if (len <= 6) return 36;
+  if (len <= 12) return 30;
+  if (len <= 24) return 24;
+  if (len <= 40) return 20;
+  if (len <= 60) return 17;
+  return 14;
 }
 
 function renderQuoteWall() {
@@ -349,8 +350,8 @@ function renderQuoteWall() {
     const lyricistName = (it.lyricists || [])[0] || "";
     const fs = quoteTextFontSize(it.text);
     return `
-      <article class="quote-tile${it.seed ? " seed" : ""}" data-id="${escapeAttr(it.id)}">
-        <div class="quote-text" style="font-size:${fs}px">${escapeHtml(it.text)}</div>
+      <article class="quote-tile${it.seed ? " seed" : ""}" data-id="${escapeAttr(it.id)}" style="--qfs:${fs}px">
+        <div class="quote-text">${escapeHtml(it.text)}</div>
         ${lyricistName ? `<div class="quote-author">${escapeHtml(lyricistName)}</div>` : ""}
         ${it.songTitle ? `<div class="quote-song">${escapeHtml(it.songTitle)}</div>` : ""}
       </article>`;
@@ -690,41 +691,45 @@ function shareQuoteAsImage() {
   ctx.fillRect(0, 0, W, H);
 
   ctx.fillStyle = fg;
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   const lines = text.trim().split(/\n/);
-  const fontSize = 80;
-  ctx.font = `600 ${fontSize}px "Noto Serif SC", "Songti SC", serif`;
-  const lineHeight = fontSize * 1.75;
+  const fontSize = 126;
+  ctx.font = `800 ${fontSize}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+  const lineHeight = fontSize * 1.6;
   const totalH = lines.length * lineHeight;
   const startY = (H - totalH) / 2 + lineHeight / 2 - 40;
+  const mx = 72;
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], W / 2, startY + i * lineHeight, W - 120);
+    ctx.fillText(lines[i], mx, startY + i * lineHeight, W - mx * 2);
   }
 
-  const tagFont = '500 24px -apple-system, "PingFang SC", sans-serif';
+  const tagFontSize = 24;
+  const tagFont = `500 ${tagFontSize}px -apple-system, "PingFang SC", sans-serif`;
   ctx.font = tagFont;
-  ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
-  const padX = 12, padY = 8;
+  const pad = 10;
+  const metrics = ctx.measureText("M");
+  const textH = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
   let tagY = H - 60;
 
   if (songTitle) {
-    const titleText = `「${songTitle}」`;
-    const tw = ctx.measureText(titleText).width;
+    const tw = ctx.measureText(songTitle).width;
+    const asc = ctx.measureText(songTitle).actualBoundingBoxAscent;
     ctx.fillStyle = fg;
-    ctx.fillRect(48, tagY - 24 - padY, tw + padX * 2, 24 + padY * 2);
+    ctx.fillRect(48, tagY - asc - pad, tw + pad * 2, textH + pad * 2);
     ctx.fillStyle = bg;
-    ctx.fillText(titleText, 48 + padX, tagY);
-    tagY -= (24 + padY * 2 + 12);
+    ctx.fillText(songTitle, 48 + pad, tagY - asc - pad + pad + asc);
+    tagY -= (textH + pad * 2 + 10);
   }
 
   if (lyricist) {
     const lw = ctx.measureText(lyricist).width;
+    const asc = ctx.measureText(lyricist).actualBoundingBoxAscent;
     ctx.fillStyle = fg;
-    ctx.fillRect(48, tagY - 24 - padY, lw + padX * 2, 24 + padY * 2);
+    ctx.fillRect(48, tagY - asc - pad, lw + pad * 2, textH + pad * 2);
     ctx.fillStyle = bg;
-    ctx.fillText(lyricist, 48 + padX, tagY);
+    ctx.fillText(lyricist, 48 + pad, tagY - asc - pad + pad + asc);
   }
 
   canvas.toBlob((blob) => {
