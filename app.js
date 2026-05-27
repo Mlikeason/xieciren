@@ -664,11 +664,22 @@ function shareQuoteAsImage() {
     songTitle = q.songTitle || "";
   }
 
-  const COLORS = [
-    "#1a1a1a", "#2c2018", "#2a3037", "#3d2b1f", "#1b3a4b",
-    "#2d4a3e", "#4a2c40", "#2b2d42", "#5c3a23", "#3a3a5c",
+  const PALETTES = [
+    { bg: "#1a1a1a", fg: "#f5f0e8" },
+    { bg: "#f5f0e8", fg: "#1a1a1a" },
+    { bg: "#2c2018", fg: "#e8d5b7" },
+    { bg: "#1b3a4b", fg: "#e0f0f5" },
+    { bg: "#e0f0f5", fg: "#1b3a4b" },
+    { bg: "#2d4a3e", fg: "#d4ead9" },
+    { bg: "#d4ead9", fg: "#2d4a3e" },
+    { bg: "#4a2c40", fg: "#f0d6e8" },
+    { bg: "#f0d6e8", fg: "#4a2c40" },
+    { bg: "#2b2d42", fg: "#edf2f4" },
+    { bg: "#5c3a23", fg: "#f5e6d3" },
+    { bg: "#3a3a5c", fg: "#e8e8f5" },
   ];
-  const bg = COLORS[Math.floor(Math.random() * COLORS.length)];
+  const palette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+  const { bg, fg } = palette;
 
   const W = 900, H = 1200;
   const canvas = document.createElement("canvas");
@@ -678,26 +689,43 @@ function shareQuoteAsImage() {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = fg;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
   const lines = text.trim().split(/\n/);
-  const fontSize = Math.min(52, Math.floor(700 / (lines.length || 1)));
-  ctx.font = `500 ${fontSize}px "Noto Serif SC", "Songti SC", serif`;
-  const lineHeight = fontSize * 1.8;
+  const fontSize = 80;
+  ctx.font = `600 ${fontSize}px "Noto Serif SC", "Songti SC", serif`;
+  const lineHeight = fontSize * 1.75;
   const totalH = lines.length * lineHeight;
-  const startY = (H - totalH) / 2 + lineHeight / 2;
+  const startY = (H - totalH) / 2 + lineHeight / 2 - 40;
   for (let i = 0; i < lines.length; i++) {
     ctx.fillText(lines[i], W / 2, startY + i * lineHeight, W - 120);
   }
 
+  const tagFont = '500 24px -apple-system, "PingFang SC", sans-serif';
+  ctx.font = tagFont;
   ctx.textAlign = "left";
-  ctx.textBaseline = "bottom";
-  ctx.fillStyle = "rgba(255,255,255,.55)";
-  ctx.font = '400 22px -apple-system, "PingFang SC", sans-serif';
-  const credit = `${lyricist}${lyricist && songTitle ? "　" : ""}「${songTitle}」`;
-  ctx.fillText(credit, 48, H - 48, W - 96);
+  ctx.textBaseline = "alphabetic";
+  const padX = 12, padY = 8;
+  let tagY = H - 60;
+
+  if (songTitle) {
+    const titleText = `「${songTitle}」`;
+    const tw = ctx.measureText(titleText).width;
+    ctx.fillStyle = fg;
+    ctx.fillRect(48, tagY - 24 - padY, tw + padX * 2, 24 + padY * 2);
+    ctx.fillStyle = bg;
+    ctx.fillText(titleText, 48 + padX, tagY);
+    tagY -= (24 + padY * 2 + 12);
+  }
+
+  if (lyricist) {
+    const lw = ctx.measureText(lyricist).width;
+    ctx.fillStyle = fg;
+    ctx.fillRect(48, tagY - 24 - padY, lw + padX * 2, 24 + padY * 2);
+    ctx.fillStyle = bg;
+    ctx.fillText(lyricist, 48 + padX, tagY);
+  }
 
   canvas.toBlob((blob) => {
     if (!blob) return showToast("生成失败");
