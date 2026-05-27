@@ -416,6 +416,32 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
   -webkit-touch-callout: none;
 }
 
+/* ── lyricist profile ─────────────────────────────── */
+.lyricist-link { cursor: pointer !important; }
+.lyricist-link:hover { background: #000 !important; }
+.lyricist-profile h1 {
+  font: 500 36px/1.2 var(--serif);
+  margin: 0 0 20px;
+  letter-spacing: 1px;
+}
+.lyricist-bio {
+  font: 15px/1.9 var(--sans);
+  color: var(--ink-2);
+  margin: 0 0 24px;
+  max-width: 600px;
+}
+.lyricist-stats {
+  font-size: 13px;
+  color: var(--ink-3);
+  letter-spacing: 0.3px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--tint);
+}
+.lyricist-works .row { padding: 14px 0; }
+.lyricist-works .row + .row::before { left: 0; right: 0; }
+.lyricist-works .row .title { font-size: 16px; }
+
 /* ── saved quote highlight in lyrics ───────────────── */
 .saved-quote {
   background: linear-gradient(transparent 60%, rgba(184,151,95,.35) 60%);
@@ -624,6 +650,14 @@ body.foot-collapsed .foot-content {
   padding-bottom: 0;
 }
 body.foot-collapsed .foot-toggle { display: block; }
+.about-link {
+  font-size: 11px;
+  color: var(--ink-4);
+  letter-spacing: 1px;
+  padding: 6px 0 10px;
+  transition: color .15s;
+}
+.about-link:hover { color: var(--ink-2); }
 
 /* ── mobile ────────────────────────────────────────── */
 @media (max-width: 760px) {

@@ -260,16 +260,25 @@ function runSearch() {
     out.push(s);
     if (out.length >= cap) break;
   }
-  // sort: rating ↓ → earliest year for (title+lyricist set) ↓ → popularity ↓ → title
-  out.sort((a, b) => {
-    const ar = a.rating || 0, br = b.rating || 0;
-    if (ar !== br) return br - ar;
-    const ay = a.sortYear ?? -Infinity, by = b.sortYear ?? -Infinity;
-    if (ay !== by) return by - ay;
-    const ap = a.popularity || 0, bp = b.popularity || 0;
-    if (ap !== bp) return bp - ap;
-    return a.title.localeCompare(b.title);
-  });
+  if (feat && !q) {
+    out.sort((a, b) => {
+      const ap = a.popularity || 0, bp = b.popularity || 0;
+      if (ap !== bp) return bp - ap;
+      const ar = a.rating || 0, br = b.rating || 0;
+      if (ar !== br) return br - ar;
+      return a.title.localeCompare(b.title);
+    });
+  } else {
+    out.sort((a, b) => {
+      const ar = a.rating || 0, br = b.rating || 0;
+      if (ar !== br) return br - ar;
+      const ay = a.sortYear ?? -Infinity, by = b.sortYear ?? -Infinity;
+      if (ay !== by) return by - ay;
+      const ap = a.popularity || 0, bp = b.popularity || 0;
+      if (ap !== bp) return bp - ap;
+      return a.title.localeCompare(b.title);
+    });
+  }
   state.lastResults = out.slice(0, MAX_RESULTS);
   renderResults();
 }
@@ -391,9 +400,8 @@ function renderDetail(s) {
       <span class="heart">♥</span><span class="num">${r}</span>
     </button>`;
 
-  // order: 词人 tags then 歌手 tag (lyricists first per request)
   const lyricistTags = (s.lyricists || []).map(
-    (n) => `<span class="tag static" title="作词">${escapeHtml(n)}</span>`
+    (n) => `<span class="tag lyricist-link" data-lyricist="${escapeAttr(n)}" title="查看词人">${escapeHtml(n)}</span>`
   ).join("");
   const artistTag = `<span class="tag static artist">${escapeHtml(s.artist)}</span>`;
   const creditRow = `<div class="credit-row">${lyricistTags}${artistTag}</div>`;
@@ -428,24 +436,84 @@ function extractCoverColor(url) {
   img.crossOrigin = "anonymous";
   img.onload = () => {
     const c = document.createElement("canvas");
-    c.width = 8; c.height = 8;
+    const sz = 32;
+    c.width = sz; c.height = sz;
     const cx = c.getContext("2d");
-    cx.drawImage(img, 0, 0, 8, 8);
-    const d = cx.getImageData(0, 0, 8, 8).data;
-    let rT = 0, gT = 0, bT = 0, n = 0;
+    cx.drawImage(img, 0, 0, sz, sz);
+    const d = cx.getImageData(0, 0, sz, sz).data;
+    let bestR = 128, bestG = 128, bestB = 128, bestSat = -1;
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i+1], b = d[i+2];
-      const sat = Math.max(r,g,b) - Math.min(r,g,b);
-      if (sat < 15 && r > 200) continue;
-      rT += r; gT += g; bT += b; n++;
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      const sat = mx - mn;
+      const lum = (mx + mn) / 2;
+      if (lum < 20 || lum > 240) continue;
+      const score = sat * 2 + Math.abs(lum - 128);
+      if (score > bestSat) { bestSat = score; bestR = r; bestG = g; bestB = b; }
     }
-    if (!n) return;
-    const avg = [Math.round(rT/n), Math.round(gT/n), Math.round(bT/n)];
-    elDetail.style.background = `linear-gradient(180deg, rgba(${avg},0.12) 0%, var(--paper) 420px)`;
+    elDetail.style.background = `linear-gradient(180deg, rgba(${bestR},${bestG},${bestB},0.15) 0%, var(--paper) 480px)`;
   };
   img.onerror = () => {};
   img.src = url;
 }
+
+// ── lyricist profile ──────────────────────────────
+const LYRICIST_BIOS = {
+  "林夕": "原名梁伟文，香港著名词人。从 1985 年入行至今，写下超过四千首歌词，被誉为「词神」。他的作品涵盖情歌、哲思、社会批判，与黄伟文并称香港词坛「两个伟文」。代表作遍布王菲、陈奕迅、张国荣、杨千嬅等歌手的经典曲目。",
+  "黄伟文": "香港词人、作家、时装评论人。以犀利机敏的文字著称，擅长用生活化的语言写出都市人的孤独与倔强。代表作包括陈奕迅《富士山下》、容祖儿《挥着翅膀的女孩》、谢安琪《喜帖街》等。",
+  "方文山": "台湾词人，周杰伦的黄金搭档。以中国风歌词闻名，将古典文学意象融入流行音乐，开创了华语流行乐的新美学。代表作《青花瓷》《东风破》《菊花台》等。",
+  "姚谦": "台湾词人、音乐制作人。文字细腻温柔，擅长描写女性内心世界和生活感悟。代表作包括王菲《我愿意》、刘若英《后来》、萧亚轩《最熟悉的陌生人》等。",
+  "李宗盛": "台湾音乐人、词曲创作人、制作人。被誉为「百万制作人」，其作品以对人生和感情的深刻洞察闻名。代表作《山丘》《给自己的歌》《当爱已成往事》等。",
+  "罗大佑": "台湾音乐人、词曲创作人。被誉为「华语流行音乐教父」，作品具有强烈的社会批判意识和时代感。代表作《光阴的故事》《童年》《恋曲 1990》等。",
+  "黄霑": "原名黄湛森，香港著名词曲创作人、作家。与金庸、倪匡、蔡澜并称「香港四大才子」。作品大气磅礴，代表作《上海滩》《沧海一声笑》《男儿当自强》等。",
+  "周杰伦": "台湾音乐人、歌手、词曲创作人。重新定义了华语流行音乐的边界，擅长融合 R&B、嘻哈与中国风。亦有大量自填词作品，代表作《稻香》《晴天》《简单爱》等。",
+};
+
+function openLyricistProfile(name) {
+  const works = state.corpus
+    .filter((s) => s.features && s.features.indexOf(name) !== -1)
+    .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+
+  const bio = LYRICIST_BIOS[name] || "";
+  const worksHtml = works.slice(0, 100).map((s) => {
+    const year = s.year ? `<span class="year">${escapeHtml(s.year)}</span>` : "";
+    return `
+      <div class="row lyricist-song" data-id="${escapeAttr(s.id)}">
+        <div class="title"><span>${escapeHtml(s.title)}</span></div>
+        <div class="meta">${escapeHtml(s.artist)}${year}</div>
+      </div>`;
+  }).join("");
+
+  elDetailInner.innerHTML = `
+    <div class="lyricist-profile">
+      <h1>${escapeHtml(name)}</h1>
+      ${bio ? `<p class="lyricist-bio">${escapeHtml(bio)}</p>` : ""}
+      <div class="lyricist-stats">${works.length} 首作品</div>
+      <div class="lyricist-works">${worksHtml}</div>
+    </div>
+  `;
+  elDetail.scrollTop = 0;
+  elDetail.style.background = "";
+  document.body.classList.add("show-detail");
+  document.body.classList.remove("detail-scrolled");
+}
+
+elDetailInner.addEventListener("click", (e) => {
+  const lyricistTag = e.target.closest(".lyricist-link");
+  if (lyricistTag) {
+    openLyricistProfile(lyricistTag.dataset.lyricist);
+    return;
+  }
+  const songRow = e.target.closest(".lyricist-song");
+  if (songRow) {
+    const song = state.corpus.find((s) => s.id === songRow.dataset.id);
+    if (song) {
+      state.selectedId = song.id;
+      renderDetail(song);
+      document.body.classList.add("show-detail");
+    }
+  }
+});
 
 function onRateClick(e, song) {
   song.rating = (song.rating || 0) + 1;
@@ -924,9 +992,21 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// ── home (brand click) ────────────────────────────
+$("#brandBtn").addEventListener("click", () => {
+  state.q = "";
+  state.featureFilter = null;
+  state.selectedId = null;
+  elQ.value = "";
+  elQClear.hidden = true;
+  document.body.classList.remove("show-detail", "detail-scrolled");
+  renderChips();
+  triggerSearch();
+});
+
 // ── about overlay ─────────────────────────────────
 const elAbout = $("#aboutOverlay");
-$("#brandBtn").addEventListener("click", () => { elAbout.hidden = false; });
+$("#aboutBtn").addEventListener("click", () => { elAbout.hidden = false; });
 $("#aboutClose").addEventListener("click", () => { elAbout.hidden = true; });
 elAbout.addEventListener("click", (e) => { if (e.target === elAbout) elAbout.hidden = true; });
 
