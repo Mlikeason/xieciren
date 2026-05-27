@@ -5,7 +5,9 @@ document.addEventListener("contextmenu", (e) => e.preventDefault());
 const $ = (sel) => document.querySelector(sel);
 const elQ = $("#q");
 const elQClear = $("#qclear");
-const elScope = $("#scope");
+const elScopeWrap = $("#scopeWrap");
+const elScopeBtn = $("#scopeBtn");
+const elScopeMenu = $("#scopeMenu");
 const elChips = $("#chips");
 const elResults = $("#results");
 const elDetail = $("#detail");
@@ -412,10 +414,37 @@ function renderDetail(s) {
     <div class="lyrics">${lyrics}</div>
   `;
   elDetail.scrollTop = 0;
+  elDetail.style.background = "";
   document.body.classList.remove("detail-scrolled");
   applyQuoteHighlights();
 
   $("#rateBtn").addEventListener("click", (e) => onRateClick(e, s));
+
+  if (s.cover_url) extractCoverColor(s.cover_url);
+}
+
+function extractCoverColor(url) {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = 8; c.height = 8;
+    const cx = c.getContext("2d");
+    cx.drawImage(img, 0, 0, 8, 8);
+    const d = cx.getImageData(0, 0, 8, 8).data;
+    let rT = 0, gT = 0, bT = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i+1], b = d[i+2];
+      const sat = Math.max(r,g,b) - Math.min(r,g,b);
+      if (sat < 15 && r > 200) continue;
+      rT += r; gT += g; bT += b; n++;
+    }
+    if (!n) return;
+    const avg = [Math.round(rT/n), Math.round(gT/n), Math.round(bT/n)];
+    elDetail.style.background = `linear-gradient(180deg, rgba(${avg},0.12) 0%, var(--paper) 420px)`;
+  };
+  img.onerror = () => {};
+  img.src = url;
 }
 
 function onRateClick(e, song) {
@@ -855,9 +884,26 @@ elQClear.addEventListener("click", () => {
   elQ.focus();
   triggerSearch();
 });
-elScope.addEventListener("change", (e) => {
-  state.scope = e.target.value;
+elScopeBtn.addEventListener("click", () => {
+  const open = elScopeWrap.classList.toggle("open");
+  elScopeMenu.hidden = !open;
+});
+elScopeMenu.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-value]");
+  if (!btn) return;
+  state.scope = btn.dataset.value;
+  elScopeBtn.firstChild.textContent = btn.textContent;
+  elScopeMenu.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  elScopeWrap.classList.remove("open");
+  elScopeMenu.hidden = true;
   triggerSearch();
+});
+document.addEventListener("click", (e) => {
+  if (!elScopeWrap.contains(e.target)) {
+    elScopeWrap.classList.remove("open");
+    elScopeMenu.hidden = true;
+  }
 });
 
 document.addEventListener("keydown", (e) => {
@@ -877,5 +923,11 @@ document.addEventListener("keydown", (e) => {
     }
   }
 });
+
+// ── about overlay ─────────────────────────────────
+const elAbout = $("#aboutOverlay");
+$("#brandBtn").addEventListener("click", () => { elAbout.hidden = false; });
+$("#aboutClose").addEventListener("click", () => { elAbout.hidden = true; });
+elAbout.addEventListener("click", (e) => { if (e.target === elAbout) elAbout.hidden = true; });
 
 bootstrap();
