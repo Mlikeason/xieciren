@@ -1,12 +1,11 @@
 // 写词人 — static lyrics search
-// Loads data/corpus.json (curated, fast) then data/corpus_extra.json (large,
-// background). All search runs client-side over an in-memory array.
 
 const $ = (sel) => document.querySelector(sel);
 const elQ = $("#q");
 const elQClear = $("#qclear");
 const elScope = $("#scope");
 const elChips = $("#chips");
+const elCount = $("#count");
 const elResults = $("#results");
 const elDetail = $("#detail");
 const elDetailInner = $(".detail-inner");
@@ -27,7 +26,7 @@ const state = {
 };
 
 const MAX_RESULTS = 500;
-const SNIPPET_LEN = 60;
+const SNIPPET_LEN = 56;
 
 // ── data loading ────────────────────────────────────
 async function loadJson(url) {
@@ -76,7 +75,7 @@ function renderChips() {
     return `<button class="chip${active}" data-name="${escapeAttr(l.name)}">${escapeHtml(l.name)}<span class="n">${l.count}</span></button>`;
   });
   const clear = state.featureFilter
-    ? `<button class="chip clear" data-name="__clear__">清除筛选</button>`
+    ? `<button class="chip clear" data-name="__clear__">清除</button>`
     : "";
   elChips.innerHTML = buttons.join("") + clear;
 }
@@ -142,11 +141,20 @@ function runSearch() {
     return a.title.localeCompare(b.title);
   });
   state.lastResults = out.slice(0, MAX_RESULTS);
-  renderResults(out.length);
+  renderCount(out.length);
+  renderResults();
+}
+
+function renderCount(n) {
+  if (!state.q && !state.featureFilter) {
+    elCount.textContent = "";
+    return;
+  }
+  elCount.innerHTML = `<b>${n.toLocaleString()}</b> 条`;
 }
 
 // ── render results ─────────────────────────────────
-function renderResults(totalHits) {
+function renderResults() {
   const list = state.lastResults;
   if (list.length === 0) {
     elResults.innerHTML = state.q || state.featureFilter
@@ -157,22 +165,20 @@ function renderResults(totalHits) {
   const q = state.q.trim();
   const showSnip = q && state.scope !== "title" && state.scope !== "artist";
   const html = list.map((s) => {
-    const meta = [s.artist, s.album, s.year].filter(Boolean).join(" · ");
+    const meta = s.year
+      ? `${escapeHtml(s.artist)}<span class="year">${escapeHtml(s.year)}</span>`
+      : escapeHtml(s.artist);
     const lyricistsText = (s.lyricists || []).join(" / ");
     const lyricLine = showSnip ? makeSnippet(s.lyrics || "", q) : "";
     return `
       <div class="row${state.selectedId === s.id ? " active" : ""}" data-id="${escapeAttr(s.id)}">
         <div class="title">${escapeHtml(s.title)}</div>
-        <div class="meta">${escapeHtml(meta)}</div>
-        ${lyricistsText ? `<div class="lyricist">词：${escapeHtml(lyricistsText)}</div>` : ""}
+        <div class="meta">${meta}</div>
+        ${lyricistsText ? `<div class="lyricist"><b>词</b>${escapeHtml(lyricistsText)}</div>` : ""}
         ${lyricLine ? `<div class="snip">${lyricLine}</div>` : ""}
       </div>`;
   });
-  let header = "";
-  if (totalHits > MAX_RESULTS) {
-    header = `<div class="empty" style="padding:14px 28px;text-align:left;font-size:12px;">命中 ${totalHits.toLocaleString()} 条 · 仅显示前 ${MAX_RESULTS}，请细化关键词</div>`;
-  }
-  elResults.innerHTML = header + html.join("");
+  elResults.innerHTML = html.join("");
 }
 
 elResults.addEventListener("click", (e) => {
@@ -194,7 +200,7 @@ elBack.addEventListener("click", () => {
 
 // ── detail ─────────────────────────────────────────
 function renderDetail(s) {
-  const meta = [s.album, s.year].filter(Boolean).join(" · ");
+  const albumLine = [s.album, s.year].filter(Boolean).join(" · ");
   const cover = s.cover_url
     ? `<img class="cover" src="${escapeAttr(s.cover_url)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
     : `<div class="cover" aria-hidden="true"></div>`;
@@ -213,7 +219,10 @@ function renderDetail(s) {
       <div class="head">
         <h1>${escapeHtml(s.title)}</h1>
         <div class="artist">${escapeHtml(s.artist)}</div>
-        <div class="meta">${meta ? escapeHtml(meta) + '<br>' : ''}${credits.join("")}</div>
+        <div class="meta">
+          ${albumLine ? `<div class="album-line">${escapeHtml(albumLine)}</div>` : ""}
+          ${credits.length ? `<div class="credits">${credits.join("")}</div>` : ""}
+        </div>
       </div>
     </div>
     <div class="lyrics">${lyrics}</div>
@@ -221,13 +230,31 @@ function renderDetail(s) {
   elDetail.scrollTop = 0;
 }
 
+// ── auto-hide chips on scroll-down ─────────────────
+const HIDE_THRESHOLD = 60;
+const SHOW_DELTA = 8;
+let lastScrollY = 0;
+function onResultsScroll() {
+  const y = elResults.scrollTop;
+  const dy = y - lastScrollY;
+  if (y < HIDE_THRESHOLD) {
+    document.body.classList.remove("chips-hidden");
+  } else if (dy > 4) {
+    document.body.classList.add("chips-hidden");
+  } else if (dy < -SHOW_DELTA) {
+    document.body.classList.remove("chips-hidden");
+  }
+  lastScrollY = y;
+}
+elResults.addEventListener("scroll", onResultsScroll, { passive: true });
+
 // ── helpers ────────────────────────────────────────
 function makeSnippet(text, q) {
   if (!text || !q) return "";
   const lower = text.toLowerCase();
   const i = lower.indexOf(q.toLowerCase());
   if (i < 0) return "";
-  const start = Math.max(0, i - 20);
+  const start = Math.max(0, i - 18);
   const end = Math.min(text.length, i + q.length + SNIPPET_LEN);
   let snip = text.slice(start, end).replace(/\n+/g, " · ");
   if (start > 0) snip = "…" + snip;
@@ -248,7 +275,7 @@ function escapeHtml(s) {
 }
 const escapeAttr = escapeHtml;
 
-// ── wire up inputs ─────────────────────────────────
+// ── inputs ─────────────────────────────────────────
 elQ.addEventListener("input", (e) => {
   state.q = e.target.value;
   elQClear.hidden = !state.q;
