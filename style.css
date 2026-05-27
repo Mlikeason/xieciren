@@ -633,6 +633,7 @@ mark { background: var(--hl); color: inherit; padding: 0 1px; }
   color: var(--ink-2);
   letter-spacing: 0.4px;
   font-style: italic;
+  cursor: pointer;
 }
 .foot-toggle {
   display: none;
@@ -650,14 +651,7 @@ body.foot-collapsed .foot-content {
   padding-bottom: 0;
 }
 body.foot-collapsed .foot-toggle { display: block; }
-.about-link {
-  font-size: 11px;
-  color: var(--ink-4);
-  letter-spacing: 1px;
-  padding: 6px 0 10px;
-  transition: color .15s;
-}
-.about-link:hover { color: var(--ink-2); }
+
 
 /* ── mobile ────────────────────────────────────────── */
 @media (max-width: 760px) {

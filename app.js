@@ -149,9 +149,11 @@ async function bootstrap() {
 
 // ── footer messages: count + lyric quotes ─────────
 const FOOT_QUOTES = [
-  "俗透的歌词，煽动你恻隐",
+  "俗透的歌词 煽动你恻隐",
   "毫无代价唱最幸福的歌",
-  "在有生的瞬间能遇到你，竟花光所有运气",
+  "在有生的瞬间能遇到你 竟花光所有运气",
+  "原来我非不快乐 只我一人没发觉",
+  "纵使意难平 痛得高兴",
 ];
 const QUOTE_INTERVAL_MS = 15_000;
 let footRotateTimer = null;
@@ -177,7 +179,7 @@ function showRandomQuote() {
     if (pool.length === 1 || pick !== lastShownText) break;
   }
   lastShownText = pick;
-  elFootContent.innerHTML = `<span class="quote">${escapeHtml(pick)}</span>`;
+  elFootContent.innerHTML = `<span class="quote" id="footQuote">${escapeHtml(pick)}</span>`;
 }
 function startFootRotation() {
   clearTimeout(footStartTimer);
@@ -1006,7 +1008,9 @@ $("#brandBtn").addEventListener("click", () => {
 
 // ── about overlay ─────────────────────────────────
 const elAbout = $("#aboutOverlay");
-$("#aboutBtn").addEventListener("click", () => { elAbout.hidden = false; });
+elFootContent.addEventListener("click", (e) => {
+  if (e.target.closest(".quote")) elAbout.hidden = false;
+});
 $("#aboutClose").addEventListener("click", () => { elAbout.hidden = true; });
 elAbout.addEventListener("click", (e) => { if (e.target === elAbout) elAbout.hidden = true; });
 
