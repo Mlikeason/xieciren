@@ -368,10 +368,6 @@ function quoteTextFontSize(text) {
   return 20;
 }
 
-function pickPalette(i) {
-  return TILE_PALETTES[i % TILE_PALETTES.length];
-}
-
 function renderQuoteWall() {
   const items = state.quotes.length
     ? state.quotes.slice().sort(
@@ -409,6 +405,7 @@ function openSongFromQuote(quoteId) {
   if (!song) { showToast("原曲未在当前词库中"); return; }
   state.selectedId = song.id;
   renderDetail(song);
+  document.body.classList.remove("home-idle");
   document.body.classList.add("show-detail");
   setTimeout(() => {
     const target = elDetailInner.querySelector(`.saved-quote[data-id="${quoteId}"]`);
@@ -639,7 +636,8 @@ function expandFoot() {
   startFootRotation();
 }
 elFootToggle.addEventListener("click", expandFoot);
-elFootContent.addEventListener("click", () => {
+elFootContent.addEventListener("click", (e) => {
+  if (e.target.closest(".quote")) return;
   if (!document.body.classList.contains("foot-collapsed")) collapseFoot();
 });
 // Initial: show count for 3s, then collapse without rotation kicking in
@@ -986,7 +984,11 @@ function escapeHtml(s) {
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;",
   }[c]));
 }
-const escapeAttr = escapeHtml;
+function escapeAttr(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
 
 // ── inputs ─────────────────────────────────────────
 elQ.addEventListener("input", (e) => {
@@ -1023,13 +1025,20 @@ document.addEventListener("click", (e) => {
   }
 });
 
+const elAbout = $("#aboutOverlay");
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "/" && document.activeElement !== elQ && !e.metaKey && !e.ctrlKey) {
     e.preventDefault();
     elQ.focus();
     elQ.select();
   } else if (e.key === "Escape") {
-    if (document.activeElement === elQ) {
+    if (!elAbout.hidden) {
+      elAbout.hidden = true;
+    } else if (elScopeWrap.classList.contains("open")) {
+      elScopeWrap.classList.remove("open");
+      elScopeMenu.hidden = true;
+    } else if (document.activeElement === elQ) {
       elQ.value = "";
       state.q = "";
       elQClear.hidden = true;
@@ -1054,7 +1063,6 @@ $("#brandBtn").addEventListener("click", () => {
 });
 
 // ── about overlay ─────────────────────────────────
-const elAbout = $("#aboutOverlay");
 elFootContent.addEventListener("click", (e) => {
   if (e.target.closest(".quote")) elAbout.hidden = false;
 });

@@ -132,9 +132,6 @@ button { cursor: pointer; background: none; border: none; padding: 0; }
 }
 .scope-menu button:hover { background: rgba(255,255,255,.1); }
 .scope-menu button.active { color: var(--accent); }
-.search-icon {
-  display: none;
-}
 .search input {
   flex: 1; min-width: 0; height: 100%;
   border: 0; background: transparent; outline: none;
@@ -679,7 +676,6 @@ body.foot-collapsed .foot-toggle { display: block; }
     height: 34px;
   }
   .scope-btn { padding: 0 8px; font-size: 11.5px; }
-  .search-icon { margin: 0 4px; width: 12px; height: 12px; }
   .search input { font-size: 16px; }
   .qclear { width: 20px; height: 20px; margin-right: 4px; font-size: 16px; }
 
